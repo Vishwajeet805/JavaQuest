@@ -1,0 +1,2094 @@
+Haan — ab JavaQuest ko **“Week 1 MVP” se “production-capable learning platform”** ke perspective se design karna chahiye. Maine tumhari master documentation ko baseline rakha hai: JavaQuest ka goal tutorial website banana nahi, balki structured lessons + coding + assessment + mistake analysis + revision + mastery system banana hai.  Aur tumhari existing spec ka ye principle bilkul sahi hai ki arbitrary learner code main application server par directly execute nahi hona chahiye. 
+
+Research ke baad main **ek important architecture decision change/strengthen** karunga: abhi Judge0 ko permanently lock nahi karna chahiye. Judge0 strong option hai, lekin GPL-3.0 licensed hai; Piston MIT licensed hai aur self-host ho sakta hai; aur long-term JavaQuest ko apna abstraction layer rakhna chahiye taaki execution engine swap kar sake. ([GitHub][1])
+
+# JavaQuest — Full Development Blueprint
+
+## 1. Final architectural philosophy
+
+JavaQuest V1 ko is tarah banana chahiye:
+
+```text
+                    ┌───────────────────────┐
+                    │      Web Client       │
+                    │ React + TypeScript    │
+                    │ Monaco Editor         │
+                    └───────────┬───────────┘
+                                │
+                           HTTPS / API
+                                │
+                    ┌───────────▼───────────┐
+                    │   JavaQuest Backend   │
+                    │   NestJS + TS         │
+                    │                       │
+                    │ Auth                  │
+                    │ Learning Engine       │
+                    │ Question Engine       │
+                    │ Assessment Engine     │
+                    │ Progress Engine       │
+                    │ Mastery Engine        │
+                    │ Revision Engine       │
+                    │ Gamification          │
+                    └──────┬────────┬───────┘
+                           │        │
+                  PostgreSQL      Redis
+                           │        │
+                           │   Execution Queue
+                           │        │
+                           │        ▼
+                           │  ┌──────────────┐
+                           │  │ Runner Worker│
+                           │  └──────┬───────┘
+                           │         │
+                           │   CodeRunner Adapter
+                           │         │
+                           │    ┌────▼────┐
+                           │    │ Sandbox │
+                           │    └────┬────┘
+                           │         │
+                           │    Java compile/run
+                           │
+                    Analytics / Logs
+```
+
+Sabse important architectural decision:
+
+> **Core product = modular monolith. Code execution = separate trust boundary.**
+
+Microservices tab tak nahi.
+
+Tumhari existing documentation already Users/Auth, Learning Engine, Assessment Engine aur Code Execution Service ko logically separate karti hai. 
+
+---
+
+# 2. Tech stack jo main lock karunga
+
+### Frontend
+
+```text
+React
+TypeScript
+Vite
+Tailwind CSS
+Monaco Editor
+TanStack Query
+React Router
+Zod
+```
+
+Tumhari original spec React + TypeScript + Tailwind aur Monaco ko already prefer karti hai. 
+
+Frontend ka kaam sirf screen render karna nahi hoga. Isme clearly separated systems honge:
+
+```text
+Learning UI
+Practice UI
+Editor UI
+Assessment UI
+Dashboard
+Mistake Bank
+Revision
+Projects
+Profile
+```
+
+---
+
+## Backend
+
+Original doc Express recommend karti thi. 
+
+Full-fledged version ke liye main **NestJS** choose karunga.
+
+Reason simple hai: JavaQuest backend eventually kaafi domains handle karega.
+
+```text
+Auth
+Users
+Content
+Questions
+Attempts
+Submissions
+Progress
+Mastery
+Revision
+Assessments
+Streak
+Achievements
+Projects
+Code Execution
+Analytics
+Admin
+```
+
+Express se ye possible hai, but architecture conventions manually maintain karni hongi.
+
+Nest ke saath modules natural banenge:
+
+```text
+AuthModule
+LearningModule
+QuestionModule
+SubmissionModule
+ProgressModule
+AssessmentModule
+MasteryModule
+RevisionModule
+CodeExecutionModule
+```
+
+Nest officially BullMQ integration provide karta hai aur Redis-backed distributed queues support karta hai. ([NestJS Documentation][2])
+
+### Decision
+
+```text
+Backend:
+NestJS + TypeScript
+```
+
+---
+
+# 3. Database
+
+## PostgreSQL
+
+Yahan koi reason nahi hai MongoDB choose karne ka.
+
+JavaQuest ka data deeply relational hai:
+
+```text
+User
+ ↓
+Enrollment
+ ↓
+Course
+ ↓
+Week
+ ↓
+Day
+ ↓
+Lesson
+ ↓
+Question
+ ↓
+Attempt
+ ↓
+Submission
+ ↓
+Mistake
+ ↓
+Revision
+```
+
+Aur:
+
+```text
+Assessment
+ ├── Questions
+ ├── Attempts
+ └── Results
+```
+
+Postgres perfect fit hai.
+
+---
+
+## ORM
+
+### Prisma
+
+Prisma relations, nested writes aur transactions support karta hai. ([Prisma][3])
+
+Use cases:
+
+```text
+submission accepted
+     ↓
+attempt update
+     ↓
+question progress update
+     ↓
+mistake resolved
+     ↓
+mastery recompute
+```
+
+Ye operations ideally transactionally consistent hone chahiye.
+
+### Lock
+
+```text
+PostgreSQL
++
+Prisma
+```
+
+---
+
+# 4. Redis ko sirf cache mat samajhna
+
+Redis JavaQuest mein multiple roles play karega.
+
+```text
+Redis
+├── Execution Queue
+├── Rate Limiting
+├── temporary result cache
+├── distributed locks
+└── future session/cache features
+```
+
+BullMQ Redis-backed distributed workers allow karta hai, aur multiple worker machines se horizontally scale kiya ja sakta hai. ([NestJS Documentation][2])
+
+Rate limiting bhi directly available hai. ([BullMQ][4])
+
+---
+
+# 5. Code execution architecture — sabse important technical part
+
+Ye flow hona chahiye:
+
+```text
+User presses Run
+       ↓
+Frontend
+       ↓
+POST /executions
+       ↓
+Backend validation
+       ↓
+rate-limit check
+       ↓
+create execution record
+       ↓
+BullMQ job
+       ↓
+Runner Worker
+       ↓
+CodeRunner Adapter
+       ↓
+Sandbox Engine
+       ↓
+javac
+       ↓
+java
+       ↓
+capture:
+stdout
+stderr
+exit code
+time
+memory
+       ↓
+normalize result
+       ↓
+DB/cache
+       ↓
+Frontend result
+```
+
+---
+
+# 6. `Run` aur `Submit` separate systems hone chahiye
+
+Ye bahut important hai.
+
+## Run
+
+Experimentation.
+
+```text
+source code
++
+custom stdin
+↓
+execute
+↓
+stdout
+```
+
+No grading.
+
+---
+
+## Submit
+
+Assessment.
+
+```text
+source code
+       ↓
+hidden tests
+       ↓
+test 1
+test 2
+test 3
+...
+       ↓
+result evaluator
+       ↓
+Accepted / Wrong Answer
+```
+
+User hidden expected outputs kabhi receive nahi karega.
+
+---
+
+# 7. Runner abstraction
+
+Core backend ko Piston/Judge0 ka naam bhi ideally nahi pata hona chahiye.
+
+```ts
+interface CodeRunner {
+  execute(
+    request: ExecutionRequest
+  ): Promise<ExecutionResult>;
+}
+```
+
+Implementations:
+
+```text
+PistonRunner
+Judge0Runner
+FutureJavaRunner
+```
+
+JavaQuest sirf ye bole:
+
+```text
+runner.execute(...)
+```
+
+Iska enormous long-term benefit hai.
+
+---
+
+# 8. Judge0 vs Piston vs custom runner
+
+Research ke baad meri ranking thodi nuanced hai.
+
+### Judge0
+
+Pros:
+
+```text
+mature
+sandboxed
+resource controls
+execution API
+education use cases
+multi-language
+```
+
+Judge0 CPU, wall-time, memory, stack aur process/thread limits expose karta hai. ([GitHub][5])
+
+Single aur multi-file submissions bhi support karta hai. ([GitHub][6])
+
+Lekin:
+
+> Judge0 CE **GPL-3.0** licensed hai. ([GitHub][1])
+
+Isliye commercial deployment se pehle licensing implications review karna chahiye.
+
+---
+
+### Piston
+
+Piston architecture bhi strong hai.
+
+It uses Isolate, Linux namespaces, unprivileged users and cgroups. Networking disabled by default hai; runtime, memory, processes, files aur stdout limits bhi available hain. ([GitHub][7])
+
+Piston package MIT licensed hai. ([GitHub][8])
+
+Public API par depend nahi karna chahiye: February 15, 2026 se free public access restricted ho gaya hai. ([GitHub][9])
+
+Self-host okay.
+
+### V1 research preference
+
+Main ab ye recommend karunga:
+
+```text
+Prototype both:
+
+Piston self-hosted
+vs
+Judge0 self-hosted
+```
+
+5–10 real Java workloads run karo.
+
+Compare:
+
+```text
+startup
+latency
+Java Scanner input
+compile errors
+timeouts
+memory handling
+multiple classes
+concurrency
+deployment difficulty
+maintenance
+license
+```
+
+Then lock one.
+
+**CodeRunner Adapter ki wajah se choice irreversible nahi hogi.**
+
+---
+
+# 9. Custom sandbox abhi mat banana
+
+Bahut tempting hoga:
+
+```text
+Docker run java...
+```
+
+But mat karna.
+
+gVisor khud explicitly warn karta hai ki ordinary containers untrusted code ke liye sufficient sandbox nahi maane jaane chahiye. ([GitHub][10])
+
+gVisor untrusted workloads ke liye additional isolation provide karta hai by inserting an application-kernel layer between workload and host kernel. ([gVisor][11])
+
+Future architecture ho sakta hai:
+
+```text
+Custom Runner
+     ↓
+containerd
+     ↓
+gVisor / runsc
+     ↓
+Java container
+```
+
+Lekin ye **Phase 3/4 infrastructure work** hai.
+
+Week 1 product ka nahi.
+
+---
+
+# 10. Security model
+
+Tumhari original requirements:
+
+```text
+CPU limit
+Memory limit
+Timeout
+filesystem isolation
+network isolation
+process isolation
+sandbox isolation
+output limit
+concurrent execution limit
+```
+
+already bilkul correct hain. 
+
+Main inke upar add karunga:
+
+```text
+Per-user execution rate limit
+Per-IP rate limit
+
+Maximum source length
+
+Maximum stdin length
+
+Maximum submission frequency
+
+Maximum queued jobs/user
+
+No outbound internet
+
+No host mounts
+
+No secrets inside execution environment
+
+Ephemeral filesystem
+
+Non-root user
+
+Process limit
+
+CPU quota
+
+Memory quota
+
+Wall-clock timeout
+
+Output truncation
+
+Job cancellation
+
+Cleanup after every execution
+
+Runner health checks
+
+Audit logs
+
+Execution id tracing
+```
+
+---
+
+# 11. Database design ko 4 categories mein divide karo
+
+Current entity list strong starting point hai. 
+
+Lekin full-fledged DB ko conceptual groups mein design karna better hoga.
+
+## A. Content
+
+```text
+Course
+Week
+Day
+Topic
+Lesson
+LessonSection
+Question
+QuestionTestCase
+Hint
+Project
+```
+
+---
+
+## B. Learning state
+
+```text
+Enrollment
+LessonProgress
+DayProgress
+QuestionProgress
+Attempt
+Submission
+```
+
+---
+
+## C. Intelligence layer
+
+```text
+Mistake
+TopicMastery
+RevisionItem
+RevisionSession
+IndependenceScore
+```
+
+---
+
+## D. Assessment/gamification
+
+```text
+Assessment
+AssessmentQuestion
+AssessmentAttempt
+AssessmentResponse
+
+Achievement
+UserAchievement
+
+Streak
+XpTransaction
+```
+
+---
+
+# 12. Question model ko content se separate karo
+
+A major design decision:
+
+Question ka statement ek cheez hai.
+
+Learner ki interaction state dusri.
+
+Example:
+
+```text
+Question
+-----------
+id
+type
+difficulty
+prompt
+starterCode
+solution
+topicId
+```
+
+versus:
+
+```text
+UserQuestionProgress
+---------------------
+userId
+questionId
+attemptCount
+bestScore
+status
+independenceScore
+lastAttemptAt
+```
+
+Isse same question thousands of users use kar sakte hain.
+
+---
+
+# 13. Test cases
+
+Coding questions:
+
+```text
+Question
+    ↓
+TestCases
+```
+
+Each test case:
+
+```text
+input
+expectedOutput
+visibility
+weight
+timeoutOverride?
+```
+
+Visibility:
+
+```text
+SAMPLE
+HIDDEN
+```
+
+Example:
+
+```text
+Sample:
+2 3
+→ 5
+```
+
+Hidden:
+
+```text
+-4 12
+→ 8
+```
+
+Hidden data server-side only.
+
+---
+
+# 14. Attempt ≠ Submission
+
+Ye distinction rakho.
+
+### Attempt
+
+Any meaningful learner attempt.
+
+```text
+MCQ
+output prediction
+fill code
+debug answer
+coding
+```
+
+### Submission
+
+Specifically executable code.
+
+So:
+
+```text
+Attempt
+  └── Submission?
+```
+
+Ye later analytics bahut clean karega.
+
+---
+
+# 15. Independence Score ka actual implementation
+
+Tumhare product ka special metric hai, so ise derived number ki tarah casual code mein calculate nahi karna chahiye.
+
+Store evidence:
+
+```text
+attemptCount
+hintLevelReached
+solutionViewed
+pseudocodeViewed
+retryAfterSolution
+timeToSolve
+```
+
+Then calculate:
+
+```text
+independence score
+```
+
+Example baseline:
+
+```text
+No hint        100
+Hint 1          90
+Hint 2          75
+Hint 3          60
+Pseudocode      40
+Solution        20
+```
+
+But future mein formula version bhi store karo:
+
+```text
+formulaVersion: "v1"
+```
+
+Kyunki scoring later change hogi.
+
+---
+
+# 16. Mistake Engine
+
+Runner sirf technical result deta hai.
+
+```text
+COMPILE_ERROR
+RUNTIME_ERROR
+TIME_LIMIT
+WRONG_ANSWER
+ACCEPTED
+```
+
+Pedagogical engine translate karta hai:
+
+```text
+Syntax
+Input Handling
+Condition
+Logic
+Concept
+```
+
+V1:
+
+```text
+deterministic error classification
++
+question metadata
+```
+
+Future:
+
+```text
+AI classifier
+```
+
+AI ko V1 core correctness path mein mat rakho.
+
+---
+
+# 17. Revision Engine
+
+Ye JavaQuest ka actual competitive advantage ban sakta hai.
+
+Flow:
+
+```text
+Wrong Answer
+    ↓
+Mistake recorded
+    ↓
+Topic weakness updated
+    ↓
+Revision priority generated
+```
+
+Revision priority roughly:
+
+```text
+priority =
+mistake severity
+× recency factor
+× repeat count
+× mastery weakness
+```
+
+Then:
+
+```text
+Today
+Tomorrow
+3 days
+7 days
+14 days
+```
+
+Future spaced repetition.
+
+Tumhari original design already previous mistakes + similar concepts ko revision sessions mein reuse karne ka plan rakhti hai. 
+
+---
+
+# 18. Mastery Engine
+
+Mastery ko DB column bana ke manually update mat karo.
+
+Inputs:
+
+```text
+concept
+easy accuracy
+medium accuracy
+logic accuracy
+independence
+debugging
+assessment
+```
+
+Tumhari original mastery model bhi exactly ye categories use karti hai. 
+
+Start simple:
+
+```text
+Concept          15%
+Easy             10%
+Medium           15%
+Logic            20%
+Independence     20%
+Debugging        10%
+Assessment       10%
+```
+
+Later data-driven tune.
+
+---
+
+# 19. Content architecture
+
+Week 1 ke lessons code mein hard-code nahi honge.
+
+Bad:
+
+```tsx
+if(day === 1) {
+ return <DayOne />
+}
+```
+
+Good:
+
+```text
+Database/content source
+        ↓
+Lesson renderer
+```
+
+Lesson could contain blocks:
+
+```text
+TEXT
+CODE
+INFO
+WARNING
+MCQ
+PREDICT
+EDITOR
+CHECKPOINT
+```
+
+Example:
+
+```json
+{
+  "type": "CODE",
+  "language": "java",
+  "content": "System.out.println(\"Hello\");"
+}
+```
+
+Isse later Week 2–4 bina frontend redesign ke add ho jayenge.
+
+---
+
+# 20. Admin panel zaroor banana
+
+Full-fledged content product bina admin tooling painful ho jayega.
+
+Admin should manage:
+
+```text
+Courses
+Days
+Lessons
+Lesson blocks
+Questions
+Hints
+Test cases
+Solutions
+Assessments
+Projects
+Achievements
+```
+
+Also:
+
+```text
+publish/unpublish
+draft
+version
+order
+```
+
+Initially super-basic internal admin enough hai.
+
+---
+
+# 21. Authentication
+
+Simple architecture:
+
+```text
+Email
+Password
+Session
+```
+
+I would prefer:
+
+```text
+secure HTTP-only cookies
+```
+
+rather than tokens dumped into localStorage.
+
+Future:
+
+```text
+Google login
+GitHub login
+```
+
+But V1:
+
+```text
+email/password
+```
+
+enough.
+
+---
+
+# 22. API design
+
+Frontend should never directly call sandbox engine.
+
+Correct:
+
+```text
+Browser
+  ↓
+JavaQuest API
+  ↓
+Execution system
+```
+
+Never:
+
+```text
+Browser
+ ↓
+Judge0/Piston
+```
+
+Otherwise:
+
+```text
+keys exposed
+hidden test logic exposed
+rate limiting bypass
+platform coupling
+```
+
+---
+
+# 23. API groups
+
+Original API modules already strong hain. 
+
+I'd refine to:
+
+```text
+/api/v1/auth
+
+/api/v1/me
+
+/api/v1/courses
+/api/v1/days
+/api/v1/lessons
+
+/api/v1/questions
+/api/v1/attempts
+/api/v1/submissions
+
+/api/v1/executions
+
+/api/v1/progress
+/api/v1/mastery
+/api/v1/mistakes
+/api/v1/revision
+
+/api/v1/assessments
+
+/api/v1/projects
+
+/api/v1/achievements
+```
+
+---
+
+# 24. Example coding flow
+
+Question:
+
+> Even or Odd
+
+Frontend:
+
+```text
+GET /questions/123
+```
+
+returns:
+
+```text
+statement
+examples
+starterCode
+constraints
+```
+
+User writes code.
+
+Run:
+
+```text
+POST /executions
+```
+
+Backend:
+
+```text
+validate
+queue
+runner
+return stdout
+```
+
+Then user clicks Submit:
+
+```text
+POST /questions/123/submissions
+```
+
+Backend:
+
+```text
+fetch hidden tests
+       ↓
+execute tests
+       ↓
+evaluate
+       ↓
+save submission
+       ↓
+save attempt
+       ↓
+update progress
+       ↓
+update mistake
+       ↓
+update mastery
+       ↓
+return result
+```
+
+---
+
+# 25. Repo structure
+
+Tumhari current proposed monorepo direction achhi hai. 
+
+Main ise:
+
+```text
+javaquest/
+
+apps/
+  web/
+  api/
+  admin/
+
+workers/
+  execution-worker/
+
+packages/
+  database/
+  types/
+  validation/
+  config/
+  ui/
+  code-runner/
+
+content/
+  seed/
+
+infra/
+  docker/
+  nginx/
+
+docs/
+
+tests/
+```
+
+banaunga.
+
+Use:
+
+```text
+pnpm workspaces
+```
+
+or Turborepo later if needed.
+
+---
+
+# 26. Local development
+
+One command:
+
+```bash
+docker compose up
+```
+
+should start:
+
+```text
+PostgreSQL
+Redis
+Runner
+```
+
+Then:
+
+```text
+pnpm dev
+```
+
+starts:
+
+```text
+web
+api
+worker
+```
+
+Developer experience start se smooth rakho.
+
+---
+
+# 27. Deployment architecture — MVP
+
+Initially Kubernetes nahi.
+
+Use:
+
+```text
+Cloud VPS / compute
+```
+
+or managed containers.
+
+Architecture:
+
+```text
+Internet
+   ↓
+Reverse Proxy
+   ↓
+Frontend
+API
+Worker
+
+Managed PostgreSQL
+Managed Redis
+
+Separate Runner Host
+```
+
+Important:
+
+> **Runner ideally main app host se alag machine/trust boundary par ho.**
+
+Even if sandbox compromised, DB host immediately accessible nahi hona chahiye.
+
+---
+
+# 28. Production architecture later
+
+Scale hone par:
+
+```text
+Load Balancer
+      ↓
+API replicas
+      ↓
+Redis
+      ↓
+Execution workers
+      ↓
+Sandbox pool
+```
+
+BullMQ multiple workers ko different machines par distribute kar sakta hai. ([BullMQ][12])
+
+Then:
+
+```text
+Autoscaling
+```
+
+possible.
+
+---
+
+# 29. Observability
+
+Start se:
+
+```text
+structured logs
+request ID
+execution ID
+user ID
+job ID
+```
+
+Track:
+
+```text
+API latency
+error rate
+queue depth
+execution latency
+runner failures
+compile failure %
+timeout %
+submission throughput
+```
+
+Without this, production mein:
+
+> “Code run kyun nahi ho raha?”
+
+ka answer difficult hoga.
+
+---
+
+# 30. Product analytics
+
+Tumhari original analytics spec bhi strong hai: questions attempted, accuracy, hint usage, drop-offs, mastery, session duration etc. 
+
+Add event model:
+
+```text
+lesson_started
+lesson_completed
+
+question_viewed
+question_attempted
+hint_opened
+solution_viewed
+
+code_run
+code_submitted
+submission_accepted
+
+revision_started
+revision_completed
+
+assessment_started
+assessment_completed
+```
+
+Later ye batayega:
+
+```text
+Day 3 pe users drop kyun kar rahe hain?
+Hint 2 too vague hai?
+Kaunsa question disproportionately hard hai?
+```
+
+---
+
+# 31. Testing strategy
+
+Four layers.
+
+### Unit
+
+```text
+mastery formula
+independence formula
+revision ranking
+grading
+```
+
+### Integration
+
+```text
+API + DB
+API + Redis
+worker + runner
+```
+
+### E2E
+
+```text
+register
+login
+Day 1
+write code
+run
+submit
+complete lesson
+```
+
+### Sandbox abuse testing
+
+Tumhari documentation already correct cases list karti hai. 
+
+Include:
+
+```text
+while(true)
+huge array
+recursive explosion
+fork/process attempt
+filesystem read
+network request
+gigantic stdout
+sleep
+compile bomb
+invalid Unicode/input
+```
+
+---
+
+# 32. CI/CD
+
+Every PR:
+
+```text
+lint
+typecheck
+unit tests
+integration tests
+build
+migration validation
+```
+
+Main branch:
+
+```text
+build container
+deploy staging
+run smoke tests
+```
+
+Production:
+
+```text
+manual promotion initially
+```
+
+---
+
+# 33. Environments
+
+Start se:
+
+```text
+local
+staging
+production
+```
+
+Never:
+
+```text
+develop directly against production DB
+```
+
+---
+
+# 34. Development order — ye sabse important part
+
+Ab random components nahi banane.
+
+## PHASE 0 — Architecture lock
+
+Complete:
+
+```text
+ADR documents
+
+tech stack
+runner abstraction
+auth approach
+DB conventions
+API conventions
+content model
+```
+
+Deliverables:
+
+```text
+architecture.md
+code-execution.md
+security.md
+database.md
+API conventions
+```
+
+---
+
+# PHASE 1 — Foundation
+
+Build:
+
+```text
+monorepo
+frontend shell
+backend shell
+Postgres
+Prisma
+Redis
+Docker
+environment config
+logging
+health endpoints
+```
+
+Definition of done:
+
+```text
+web → API → DB working
+API → Redis working
+```
+
+---
+
+# PHASE 2 — Authentication
+
+Build:
+
+```text
+register
+login
+logout
+session
+protected routes
+profile
+```
+
+Nothing learning-related before auth foundation works.
+
+---
+
+# PHASE 3 — Content Engine
+
+Build:
+
+```text
+Course
+Week
+Day
+Lesson
+LessonSection
+Question
+Hint
+TestCase
+```
+
+Then seed:
+
+```text
+Week 1
+```
+
+No UI polish yet.
+
+---
+
+# PHASE 4 — Learning UI
+
+Build:
+
+```text
+Dashboard
+Roadmap
+Lesson page
+Lesson navigation
+Understanding checks
+Progress save/resume
+```
+
+At this point user can:
+
+```text
+login
+open Day 1
+learn
+resume later
+```
+
+---
+
+# PHASE 5 — Code Editor
+
+Integrate Monaco.
+
+Features:
+
+```text
+Java syntax
+starter code
+reset
+run
+stdin
+output
+compile errors
+```
+
+No hidden grading yet.
+
+---
+
+# PHASE 6 — Execution system
+
+Now build:
+
+```text
+Execution API
+BullMQ
+Execution Worker
+CodeRunner interface
+Piston/Judge0 adapter
+rate limits
+timeouts
+result normalization
+```
+
+Test thoroughly.
+
+This is the riskiest infrastructure phase.
+
+---
+
+# PHASE 7 — Submission Engine
+
+Add:
+
+```text
+hidden test cases
+grading
+attempt storage
+submission history
+retry
+```
+
+Now:
+
+```text
+Coding question works end-to-end.
+```
+
+---
+
+# PHASE 8 — Hint/Independence Engine
+
+Implement:
+
+```text
+Hint 1
+Hint 2
+Hint 3
+Pseudocode
+Solution
+Retry required
+```
+
+Track every reveal.
+
+Calculate independence score.
+
+---
+
+# PHASE 9 — Mistake Bank
+
+Implement:
+
+```text
+incorrect attempt
+ ↓
+mistake record
+ ↓
+classification
+ ↓
+mistake page
+ ↓
+resolved status
+```
+
+This is one of JavaQuest's core differentiators; tumhari own product principle fancy features ke upar mistake analysis ko prioritize karti hai. 
+
+---
+
+# PHASE 10 — Mastery
+
+Implement:
+
+```text
+topic metrics
+independence
+assessment
+debugging
+weighted score
+mastery level
+```
+
+Dashboard:
+
+```text
+Conditions 72%
+Variables 94%
+Operators 81%
+```
+
+---
+
+# PHASE 11 — Revision Engine
+
+Generate:
+
+```text
+daily revisions
+previous mistakes
+weak-topic questions
+mixed questions
+```
+
+Then scheduled spaced revision later.
+
+---
+
+# PHASE 12 — Assessments
+
+Implement:
+
+```text
+Daily Test
+Week 1 Assessment
+
+MCQ
+Predict
+Debug
+Coding
+Logic
+Boss
+```
+
+Assessment mode must have stricter state handling than practice.
+
+---
+
+# PHASE 13 — Progressive Project
+
+Implement one project that evolves:
+
+```text
+Day 1
+Introduction
+
+Day 2
+Variables
+
+Day 3
+Calculations
+
+Day 4
+Inputs
+
+Day 5
+Conditions
+
+Day 6
+Multiple decisions
+
+Day 7
+Final app
+```
+
+This should feel like a “save file” that grows through the week.
+
+---
+
+# PHASE 14 — Gamification
+
+Only now.
+
+```text
+XP
+Streak
+Achievements
+```
+
+Not leaderboard.
+
+Tumhari product principle already correctly says learning effectiveness > feature count. 
+
+---
+
+# PHASE 15 — Admin tools
+
+Build:
+
+```text
+question editor
+lesson editor
+test-case editor
+hint editor
+assessment composer
+publish workflow
+```
+
+Without this Week 2–4 creation painfully slow ho jayega.
+
+---
+
+# PHASE 16 — Analytics + polish
+
+Add:
+
+```text
+events
+drop-off analysis
+question difficulty analytics
+hint effectiveness
+execution metrics
+```
+
+Plus:
+
+```text
+empty states
+loading states
+error states
+mobile
+accessibility
+keyboard UX
+```
+
+---
+
+# PHASE 17 — Closed beta
+
+Use real beginners.
+
+Tumhari original roadmap bhi real-user testing before expanding weeks recommend karti hai. 
+
+Observe:
+
+```text
+kahan confuse hue
+kahan hint li
+kahan quit kiya
+kitna copy kiya
+kis question ne frustrate kiya
+```
+
+Do not ask only:
+
+> “Website achhi lagi?”
+
+Measure behavior.
+
+---
+
+# PHASE 18 — Week 2–4
+
+Only after Week 1 data.
+
+Then:
+
+```text
+Week 2 Loops
+Week 3 Arrays + Methods
+Week 4 Strings + OOP
+```
+
+Tumhari complete 30-day progression already documented hai. 
+
+---
+
+# 35. What we deliberately DON'T build initially
+
+This matters equally.
+
+No:
+
+```text
+microservices
+Kubernetes
+AI tutor everywhere
+leaderboards
+mobile app
+social feed
+multiplayer coding
+Python/C++
+complex recommendation ML
+custom sandbox
+video hosting
+payments
+```
+
+Otherwise JavaQuest banne se pehle infrastructure project ban jayega.
+
+---
+
+# 36. Full product milestones
+
+Main project ko roughly ye milestones dunga:
+
+```text
+M0
+Architecture locked
+
+M1
+User can register/login
+
+M2
+User can open and complete lessons
+
+M3
+User can run Java
+
+M4
+User can submit coding answers
+
+M5
+Hints + independence work
+
+M6
+Mistake tracking works
+
+M7
+Mastery works
+
+M8
+Revision works
+
+M9
+Week 1 complete end-to-end
+
+M10
+Closed beta
+
+M11
+Week 2–4
+
+M12
+Public beta
+```
+
+---
+
+# 37. Sabse important system boundary
+
+JavaQuest ko mentally 3 products samjho:
+
+```text
+┌──────────────────────┐
+│ LEARNING PLATFORM    │
+│ lessons/progress     │
+└──────────────────────┘
+
+┌──────────────────────┐
+│ LEARNING INTELLIGENCE│
+│ mistakes/mastery     │
+│ revision/independence│
+└──────────────────────┘
+
+┌──────────────────────┐
+│ CODE EXECUTION       │
+│ sandbox/queue/tests  │
+└──────────────────────┘
+```
+
+In teeno ko cleanly separate rakho.
+
+Isi separation ki wajah se later JavaQuest Python support bhi add kar sakta hai without rewriting learning engine.
+
+---
+
+# 38. Final stack I would currently freeze
+
+```text
+FRONTEND
+React
+TypeScript
+Vite
+Tailwind
+Monaco
+TanStack Query
+Zod
+
+BACKEND
+NestJS
+TypeScript
+
+DATABASE
+PostgreSQL
+Prisma
+
+ASYNC / QUEUE
+Redis
+BullMQ
+
+EXECUTION
+CodeRunner abstraction
+↓
+Piston/Judge0 prototype
+↓
+one self-hosted engine chosen after benchmark
+
+AUTH
+HTTP-only cookie sessions
+
+INFRA
+Docker
+Docker Compose
+Reverse Proxy
+separate runner host
+
+TESTING
+Vitest/Jest
+Supertest
+Playwright
+
+MONITORING
+structured logging
+metrics
+execution tracing
+```
+
+---
+
+# 39. One correction to our earlier decision
+
+Earlier humne kaha tha:
+
+> “Self-hosted Judge0 lock kar dete hain.”
+
+Research ke baad main ise slightly revise karunga.
+
+**Lock Judge0 nahi. Lock `CodeRunner` architecture.**
+
+Then benchmark:
+
+```text
+Judge0
+vs
+Piston
+```
+
+Judge0 excellent hai, but GPL-3.0 licensing factor hai. ([GitHub][1]) Piston MIT hai, self-hosting allowed hai, aur its sandbox uses namespaces/cgroups/Isolate with multiple resource limits. ([GitHub][8])
+
+This is much safer product engineering.
+
+---
+
+# 40. Ab exactly next kya karna chahiye
+
+Ab coding shuru karne se pehle **4 specifications ek saath lock** karni chahiye:
+
+```text
+1. Production Database Schema v1
+           ↓
+2. REST API Contract v1
+           ↓
+3. Code Runner Contract + benchmark
+           ↓
+4. Week 1 content data format
+```
+
+Phir:
+
+```text
+Repository bootstrap
+↓
+Database migrations
+↓
+Backend
+↓
+Auth
+↓
+Content engine
+↓
+Frontend shell
+↓
+Code runner
+↓
+Practice engine
+↓
+Mistake/mastery/revision
+↓
+Assessment
+↓
+Week 1 beta
+```
+
+Ye path lene par JavaQuest **random tutorial project se ek genuinely scalable product architecture** mein convert ho jayega.
+
+Aur sabse achhi baat: architecture tumhari original product philosophy preserve karta hai — completion count ke bajaye learner ke attempts, mistakes, programs aur actual mastery ko measure karna. 
+
+Agle step mein ideally hum **JavaQuest Database Schema v1.0 ko table-by-table design karein — exact fields, relations, enums, indexes, constraints aur Prisma models ke level tak**. Wahi ab implementation ka real foundation hai.
+
+[1]: https://github.com/judge0/judge0?utm_source=chatgpt.com "GitHub - judge0/judge0: Robust, fast, scalable, and sandboxed open-source online code execution system for humans and AI. · GitHub"
+[2]: https://docs.nestjs.com/techniques/queues?utm_source=chatgpt.com "Queues | NestJS - A progressive Node.js framework"
+[3]: https://www.prisma.io/docs/orm/prisma-client/queries/relation-queries?utm_source=chatgpt.com "Relation queries (Concepts) | Prisma Documentation"
+[4]: https://docs.bullmq.io/guide/rate-limiting?utm_source=chatgpt.com "Rate limiting | BullMQ"
+[5]: https://github.com/judge0/judge0/blob/master/docs/api/system_and_configuration/configuration_info.md?utm_source=chatgpt.com "judge0/docs/api/system_and_configuration/configuration_info.md at master · judge0/judge0 · GitHub"
+[6]: https://github.com/judge0/judge0/blob/master/docs/api/submissions/submissions.md?utm_source=chatgpt.com "judge0/docs/api/submissions/submissions.md at master · judge0/judge0 · GitHub"
+[7]: https://github.com/sanmayc1/Piston?utm_source=chatgpt.com "GitHub - sanmayc1/Piston: A high performance general purpose code execution engine. · GitHub"
+[8]: https://github.com/engineer-man/piston/pkgs/container/piston/?utm_source=chatgpt.com "Package piston · GitHub"
+[9]: https://github.com/engineer-man/piston/blob/master/readme.md?utm_source=chatgpt.com "piston/readme.md at master · engineer-man/piston · GitHub"
+[10]: https://github.com/google/gvisor/blob/master/README.md?utm_source=chatgpt.com "gvisor/README.md at master · google/gvisor · GitHub"
+[11]: https://gvisor.dev/docs/architecture_guide/intro/?utm_source=chatgpt.com "Introduction to gVisor security - gVisor"
+[12]: https://docs.bullmq.io/guide/workers/concurrency?utm_source=chatgpt.com "Concurrency | BullMQ"
