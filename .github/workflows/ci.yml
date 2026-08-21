@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: javaquets
+          POSTGRES_USER: javaquets
+          POSTGRES_PASSWORD: javaquets
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U javaquets"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://javaquets:javaquets@localhost:5432/javaquets
+      API_PORT: 4000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @javaquets/database db:generate
+
+      - name: Apply test database schema
+        run: pnpm --filter @javaquets/database db:push
+
+      - name: Build isolated Java runner
+        run: pnpm runner:build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm exec turbo test
+
+      - name: Build
+        run: pnpm build
