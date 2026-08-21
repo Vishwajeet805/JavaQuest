@@ -17,4 +17,6 @@ export type HealthResponse = {
   status: "ok" | "degraded";
   service: "javaquets-api";
   database: "connected" | "disconnected";
+  runner?: "ready" | "unavailable";
+  checks?: { database: number; runner: number };
 };
