@@ -14,3 +14,9 @@ export type Paginated<T> = {
   limit: number;
   total: number;
 };
+
+export type HealthResponse = {
+  status: "ok" | "degraded";
+  service: "javaquets-api";
+  database: "connected" | "disconnected";
+};

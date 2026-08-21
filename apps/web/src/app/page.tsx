@@ -3,7 +3,7 @@ import { getHealth } from "@/services/health";
 export default async function HomePage() {
   const health = await getHealth();
 
-  const apiConnected = health?.status === "ok";
+  const apiConnected = health !== null;
   const dbConnected = health?.database === "connected";
 
   return (

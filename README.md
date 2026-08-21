@@ -1,76 +1,41 @@
 # JavaQuets
 
-A Java-learning platform delivered through courses, quests, and exercises.
+Foundation 0 monorepo for the JavaQuets learning platform.
 
-This repository currently contains **Foundation 0** — the base architecture the
-rest of the product (courses, quests, exercises, code execution, progress, XP,
-achievements, profiles, admin panel, etc.) will be built on top of. No product
-features live here yet; the goal of this stage is a clean, boring, provably
-working skeleton.
+## Stack
 
-## Structure
+- pnpm workspaces + Turborepo
+- Next.js web app
+- Express API
+- PostgreSQL 17
+- Prisma
+- Zod-based server configuration
+- Pino structured logging
+- Vitest + Supertest integration testing
 
-```text
-javaquets/
-├── apps/
-│   ├── web/                 # Next.js frontend
-│   └── api/                 # Express backend
-│
-├── packages/
-│   ├── database/            # Prisma schema/client
-│   ├── shared/               # Shared TS types/constants
-│   ├── validation/           # Request/domain schemas (zod)
-│   ├── config/                # Central env validation
-│   └── ui/                   # Reusable UI components (populated later)
-│
-├── docs/
-│   ├── architecture/
-│   └── decisions/
-│
-├── infra/
-│   └── docker/               # Local Postgres via docker-compose
-│
-└── .github/workflows/        # CI pipeline
-```
+## Requirements
 
-## Getting started
+- Node.js 20+
+- pnpm 10
+- Docker / Docker Compose
+
+## Local setup
 
 ```bash
-# 1. Install dependencies
 pnpm install
-
-# 2. Copy env file
 cp .env.example .env
-
-# 3. Start local Postgres
 docker compose -f infra/docker/docker-compose.yml up -d
-
-# 4. Generate Prisma client and push schema
 pnpm db:generate
 pnpm db:push
-
-# 5. Run everything
 pnpm dev
 ```
 
-This should give you:
+Then open:
 
 - Web: http://localhost:3000
-- API: http://localhost:4000
-- Postgres: localhost:5432
+- API health: http://localhost:4000/health
 
-Visiting the web app should show:
-
-```text
-API Status: Connected ✓
-Database Status: Connected ✓
-```
-
-And hitting the API directly:
-
-```bash
-curl http://localhost:4000/health
-```
+The web checkpoint should show both API and Database as connected. A healthy API response is:
 
 ```json
 {
@@ -80,10 +45,11 @@ curl http://localhost:4000/health
 }
 ```
 
-That end-to-end request is the Foundation 0 checkpoint — it proves the
-frontend, backend, and database are all correctly wired together.
+If PostgreSQL is unavailable, `/health` returns HTTP 503 with `status: "degraded"` and `database: "disconnected"`.
 
-## Quality gates
+## Quality checks
+
+With PostgreSQL running:
 
 ```bash
 pnpm lint
@@ -92,45 +58,8 @@ pnpm test
 pnpm build
 ```
 
-All four must pass before merging.
+`pnpm test` loads the root `.env` and includes an integration test for `GET /health`.
 
-## Architecture rules
+## Lockfile note
 
-- **One business capability = one module** in `apps/api/src/modules/*`
-  (controller + service + repository + schema + types + routes per module),
-  not global `controllers/`, `services/`, `repositories/` dumping grounds.
-- **`components/` vs `features/`** in the frontend: `components/` holds
-  generic, reusable UI; `features/` holds business-domain UI
-  (`features/quests`, `features/courses`, etc.).
-- **Shared contracts**: types live in `packages/shared`, request/response
-  validation lives in `packages/validation`, so the frontend and backend never
-  drift apart on shape.
-- **No scattered `process.env`**: all environment access goes through the
-  validated `env` object in `packages/config`.
-- **Standard error shape** everywhere:
-
-  ```json
-  {
-    "error": {
-      "code": "QUEST_NOT_FOUND",
-      "message": "Quest not found",
-      "details": null
-    }
-  }
-  ```
-
-## What comes next — Foundation 1
-
-Foundation 1 introduces the actual domain model and turns this into a real
-Java-learning product:
-
-```text
-User
-Course
-Module
-Quest
-Lesson
-Exercise
-Submission
-Progress
-```
+This archive was hardened in an environment without registry access, so a real `pnpm-lock.yaml` could not be generated. The first networked `pnpm install` should generate it; commit that file, then change CI back from `pnpm install --no-frozen-lockfile` to `pnpm install --frozen-lockfile` for reproducible installs.

@@ -1,12 +1,15 @@
+import type { HealthResponse } from "@javaquets/shared";
 import type { Request, Response } from "express";
 import { checkDatabaseConnection } from "./health.service.js";
 
 export async function healthHandler(_req: Request, res: Response) {
-  const database = await checkDatabaseConnection();
+  const databaseConnected = await checkDatabaseConnection();
 
-  res.status(200).json({
-    status: "ok",
+  const body = {
+    status: databaseConnected ? "ok" : "degraded",
     service: "javaquets-api",
-    database: database ? "connected" : "disconnected",
-  });
+    database: databaseConnected ? "connected" : "disconnected",
+  } satisfies HealthResponse;
+
+  res.status(databaseConnected ? 200 : 503).json(body);
 }
