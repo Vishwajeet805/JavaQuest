@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Build output
+dist/
+build/
+
+# Turbo
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Prisma/local databases
+*.db
+*.db-journal
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Archives
+*.zip
