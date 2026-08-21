@@ -6,12 +6,14 @@
     "dev": "dotenv -e .env -- turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "test": "dotenv -e .env -- turbo test",
+    "test": "dotenv -e .env.test -- turbo test",
     "typecheck": "turbo typecheck",
     "format": "prettier --write .",
     "db:generate": "dotenv -e .env -- pnpm --filter @javaquets/database db:generate",
     "db:push": "dotenv -e .env -- pnpm --filter @javaquets/database db:push",
-    "db:seed": "dotenv -e .env -- pnpm --filter @javaquets/database db:seed"
+    "db:migrate:deploy": "pnpm --filter @javaquets/database db:migrate:deploy",
+    "db:seed": "dotenv -e .env -- pnpm --filter @javaquets/database db:seed",
+    "runner:build": "docker build -t javaquets-java-runner:local infra/runner"
   },
   "devDependencies": {
     "eslint": "^9.13.0",
@@ -23,5 +25,15 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
