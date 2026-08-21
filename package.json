@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "format": "prettier --write .",
     "db:generate": "dotenv -e .env -- pnpm --filter @javaquets/database db:generate",
-    "db:push": "dotenv -e .env -- pnpm --filter @javaquets/database db:push"
+    "db:push": "dotenv -e .env -- pnpm --filter @javaquets/database db:push",
+    "db:seed": "dotenv -e .env -- pnpm --filter @javaquets/database db:seed"
   },
   "devDependencies": {
     "eslint": "^9.13.0",

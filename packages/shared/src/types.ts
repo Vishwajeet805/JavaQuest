@@ -1,5 +1,3 @@
-export type Difficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
-
 export type ApiError = {
   error: {
     code: string;

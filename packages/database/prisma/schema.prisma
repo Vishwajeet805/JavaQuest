@@ -7,12 +7,196 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Foundation 0: only enough schema to prove the database is wired up.
-// Domain models (Course, Module, Quest, Exercise, Submission, Progress,
-// Achievement, XPEvent, Streak...) are introduced in Foundation 1.
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum QuestStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum LessonKind {
+  THEORY
+  EXAMPLE
+  RECAP
+}
+
+enum ExerciseKind {
+  MULTIPLE_CHOICE
+  CODE
+  OUTPUT_PREDICTION
+}
+
+enum SubmissionStatus {
+  PENDING
+  PASSED
+  FAILED
+  ERROR
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String          @id @default(cuid())
+  email       String          @unique
+  displayName String?
+  submissions Submission[]
+  progress    QuestProgress[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String
+  status      CourseStatus @default(DRAFT)
+  difficulty  Difficulty   @default(BEGINNER)
+  modules     CourseModule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status])
+}
+
+model CourseModule {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  slug        String
+  title       String
+  description String?
+  position    Int
+  quests      Quest[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([courseId, slug])
+  @@unique([courseId, position])
+  @@index([courseId])
+}
+
+model Quest {
+  id          String          @id @default(cuid())
+  moduleId    String
+  module      CourseModule    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  slug        String          @unique
+  title       String
+  description String
+  status      QuestStatus     @default(DRAFT)
+  difficulty  Difficulty      @default(BEGINNER)
+  position    Int
+  estimatedMinutes Int        @default(15)
+  lessons     Lesson[]
+  exercises   Exercise[]
+  progress    QuestProgress[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([moduleId, position])
+  @@index([moduleId, status])
+}
+
+model Lesson {
+  id        String     @id @default(cuid())
+  questId   String
+  quest     Quest      @relation(fields: [questId], references: [id], onDelete: Cascade)
+  slug      String
+  title     String
+  kind      LessonKind @default(THEORY)
+  content   String     @db.Text
+  position  Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([questId, slug])
+  @@unique([questId, position])
+  @@index([questId])
+}
+
+model Exercise {
+  id          String       @id @default(cuid())
+  questId     String
+  quest       Quest        @relation(fields: [questId], references: [id], onDelete: Cascade)
+  slug        String
+  title       String
+  prompt      String       @db.Text
+  kind        ExerciseKind
+  difficulty  Difficulty   @default(BEGINNER)
+  position    Int
+  starterCode String?      @db.Text
+  solution    String?      @db.Text
+  testCases   TestCase[]
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([questId, slug])
+  @@unique([questId, position])
+  @@index([questId])
+}
+
+model TestCase {
+  id             String   @id @default(cuid())
+  exerciseId     String
+  exercise       Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  input          String?  @db.Text
+  expectedOutput String   @db.Text
+  isHidden       Boolean  @default(false)
+  position       Int
+  createdAt      DateTime @default(now())
+
+  @@unique([exerciseId, position])
+  @@index([exerciseId])
+}
+
+model Submission {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  sourceCode  String?          @db.Text
+  answer      String?          @db.Text
+  status      SubmissionStatus @default(PENDING)
+  score       Int?
+  runtimeMs   Int?
+  errorText   String?          @db.Text
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, exerciseId, createdAt])
+  @@index([exerciseId, status])
+}
+
+model QuestProgress {
+  id                 String         @id @default(cuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId            String
+  quest              Quest          @relation(fields: [questId], references: [id], onDelete: Cascade)
+  status             ProgressStatus @default(NOT_STARTED)
+  completedExercises Int            @default(0)
+  totalExercises     Int            @default(0)
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@unique([userId, questId])
+  @@index([userId, status])
 }
