@@ -1,0 +1,11 @@
+import { Router } from "express";
+import { requireLearner } from "../../common/auth/learnerContext.js";
+import * as controller from "./auth.controller.js";
+import { env } from "@javaquets/config";
+import { rateLimit } from "../../common/security/rateLimiter.js";
+export const authRouter = Router();
+const authLimit=rateLimit("auth",{windowMs:env.RATE_LIMIT_WINDOW_MS,max:env.AUTH_RATE_LIMIT_MAX});
+authRouter.post("/auth/signup", authLimit, controller.signup);
+authRouter.post("/auth/login", authLimit, controller.login);
+authRouter.post("/auth/logout", controller.logout);
+authRouter.get("/auth/me", requireLearner, controller.me);
