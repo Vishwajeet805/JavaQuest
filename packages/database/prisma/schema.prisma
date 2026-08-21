@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Foundation 0: only enough schema to prove the database is wired up.
+// Domain models (Course, Module, Quest, Exercise, Submission, Progress,
+// Achievement, XPEvent, Streak...) are introduced in Foundation 1.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
