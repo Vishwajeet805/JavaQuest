@@ -1,8 +1,17 @@
 import { PrismaClient } from "@prisma/client";
+import { randomBytes, scrypt } from "node:crypto";
+import { promisify } from "node:util";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const salt = randomBytes(16).toString("hex");
+  const key = await promisify(scrypt)("AdminPass123!", salt, 64);
+  await prisma.user.upsert({
+    where: { email: "admin@javaquets.dev" },
+    update: { role: "ADMIN", passwordHash: `scrypt$${salt}$${key.toString("hex")}` },
+    create: { email: "admin@javaquets.dev", displayName: "JavaQuets Admin", role: "ADMIN", passwordHash: `scrypt$${salt}$${key.toString("hex")}` },
+  });
   const courseSlug = "java-foundations";
 
   await prisma.course.deleteMany({ where: { slug: courseSlug } });
