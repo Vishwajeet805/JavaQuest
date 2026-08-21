@@ -1,0 +1,16 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import type { EnrollmentDto, CourseProgressDto } from "@javaquets/shared";
+import { useAuth } from "@/features/auth/auth-context";
+import { getEnrollments, getCourseProgress } from "@/services/learner";
+import { ProgressBar } from "@/components/progress-bar";
+import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { GamificationSummary } from "@/components/gamification-summary";
+type Item = { enrollment: EnrollmentDto; progress: CourseProgressDto | null };
+export default function Dashboard() {
+  const { user } = useAuth(); const [items,setItems]=useState<Item[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
+  const load=useCallback(()=>{setLoading(true);setError("");getEnrollments().then(async enrollments=>setItems(await Promise.all(enrollments.map(async enrollment=>({enrollment,progress:await getCourseProgress(enrollment.courseSlug).catch(()=>null)}))))).catch(e=>setError(e instanceof Error?e.message:"Could not load dashboard")).finally(()=>setLoading(false))},[]);
+  useEffect(load,[load]); const completed=items.filter(i=>i.enrollment.status==="COMPLETED").length;
+  return <><p className="eyebrow">Learner workspace</p><div className="mt-3 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-4xl font-black">Good to see you, {user?.displayName?.split(" ")[0]??"learner"}.</h1><p className="mt-2 text-slate-400">Pick up where you left off and keep the momentum going.</p></div><Link className="btn-primary" href="/courses">Explore courses</Link></div><GamificationSummary/><div className="mt-8 grid gap-4 sm:grid-cols-3"><div className="card"><p className="text-sm text-slate-400">Active courses</p><p className="mt-2 text-3xl font-black">{items.length-completed}</p></div><div className="card"><p className="text-sm text-slate-400">Completed</p><p className="mt-2 text-3xl font-black">{completed}</p></div><div className="card"><p className="text-sm text-slate-400">Average progress</p><p className="mt-2 text-3xl font-black">{items.length?Math.round(items.reduce((n,i)=>n+(i.progress?.percentComplete??0),0)/items.length):0}%</p></div></div><section id="enrollments" className="mt-10"><h2 className="text-2xl font-bold">My learning</h2><div className="mt-4">{loading?<LoadingState/>:error?<ErrorState message={error} retry={load}/>:items.length===0?<EmptyState title="Your learning path starts here" body="Enroll in a course to see its quests and progress on this dashboard." action={<Link className="btn-primary" href="/courses">Browse courses</Link>}/>:<div className="grid gap-4 md:grid-cols-2">{items.map(({enrollment,progress})=><Link className="card transition hover:-translate-y-0.5 hover:border-amber-500/60" href={`/courses/${enrollment.courseSlug}`} key={enrollment.courseSlug}><div className="flex items-start justify-between gap-3"><div><p className="eyebrow">{enrollment.status}</p><h3 className="mt-2 text-xl font-bold">{enrollment.courseTitle}</h3></div><span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">{progress?.completedQuests??0}/{progress?.totalQuests??0} quests</span></div><div className="mt-7"><ProgressBar value={progress?.percentComplete??0}/></div></Link>)}</div>}</div></section></>;
+}
