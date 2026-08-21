@@ -9,10 +9,11 @@ describe("GET /health", () => {
     const response = await request(app).get("/health");
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       status: "ok",
       service: "javaquets-api",
       database: "connected",
+      runner: "ready",
     });
   });
 });

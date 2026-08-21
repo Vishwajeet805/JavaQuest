@@ -1,0 +1,3 @@
+export function LoadingState({label="Loading your workspace…"}:{label?:string}){return <div className="card animate-pulse text-slate-400">{label}</div>}
+export function ErrorState({message,retry}:{message:string;retry?:()=>void}){return <div className="card"><p className="font-semibold text-red-300">Something went wrong</p><p className="mt-1 text-sm text-slate-400">{message}</p>{retry&&<button className="btn-secondary mt-4" onClick={retry}>Try again</button>}</div>}
+export function EmptyState({title,body,action}:{title:string;body:string;action?:React.ReactNode}){return <div className="card py-12 text-center"><p className="text-xl font-bold">{title}</p><p className="mx-auto mt-2 max-w-lg text-slate-400">{body}</p>{action&&<div className="mt-5">{action}</div>}</div>}
