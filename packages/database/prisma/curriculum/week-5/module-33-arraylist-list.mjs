@@ -29,8 +29,8 @@ export const arrayListListModule = buildTopicModule({
   check: "Resizable ordered collection implementation?",
   answer: "ArrayList",
   labs: [{
-    starterCode: "import java.util.*;\npublic class Main{public static void main(String[] args){List<String> names=new ArrayList<>();names.add(\"Aman\");names.add(\"Riya\");System.out.println(names.size());System.out.println(names.get(0));}}",
-    solution: "import java.util.*;\npublic class Main{public static void main(String[] args){List<String> names=new ArrayList<>();names.add(\"Aman\");names.add(\"Riya\");System.out.println(names.size());System.out.println(names.get(0));}}",
+    starterCode: "import java.util.*;\npublic class Main{public static void main(String[] args){List<String> names=new ArrayList<>():\n\n\n\n\n\t\t}\n\t}",
+    solution: "import java.util.*;\npublic class Main{public static void main(String[] args)\n{\n\tList<String> names=new ArrayList<>();\nnames.add(\"Aman\");\nnames.add(\"Riya\");\nSystem.out.println(names.size());\nSystem.out.println(names.get(0));}}",
     expectedOutput: "2\nAman",
   }],
 }, points);
