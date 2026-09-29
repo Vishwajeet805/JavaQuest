@@ -8,6 +8,7 @@ const userId = "f2-integration-learner";
 const courseSlug = "f2-progress-course";
 const questSlug = "f2-progress-quest";
 const exerciseSlug = "finish-me";
+const predictionExerciseSlug = "predict-output";
 
 describe("Foundation 2 learner journey", () => {
   const app = createApp();
@@ -46,14 +47,24 @@ describe("Foundation 2 learner journey", () => {
                 status: "PUBLISHED",
                 position: 1,
                 exercises: {
-                  create: {
-                    slug: exerciseSlug,
-                    title: "Finish Me",
-                    prompt: "Complete it",
-                    kind: "OUTPUT_PREDICTION",
-                    position: 1,
-                    solution: "done",
-                  },
+                  create: [
+                    {
+                      slug: exerciseSlug,
+                      title: "Finish Me",
+                      prompt: "Complete it",
+                      kind: "OUTPUT_PREDICTION",
+                      position: 1,
+                      solution: "done",
+                    },
+                    {
+                      slug: predictionExerciseSlug,
+                      title: "Predict Output",
+                      prompt: "What does the program print?",
+                      kind: "OUTPUT_PREDICTION",
+                      position: 2,
+                      solution: "4\n72.5",
+                    },
+                  ],
                 },
               },
             },
@@ -105,8 +116,23 @@ describe("Foundation 2 learner journey", () => {
       .set(learner)
       .send({ answer: "done" });
     expect(completed.status).toBe(200);
-    expect(completed.body.status).toBe("COMPLETED");
+    expect(completed.body.status).toBe("IN_PROGRESS");
     expect(completed.body.completedExercises).toBe(1);
+
+    const incorrectPrediction = await request(app)
+      .post(`/quests/${questSlug}/exercises/${predictionExerciseSlug}/complete`)
+      .set(learner)
+      .send({ answer: "4\n72.4" });
+    expect(incorrectPrediction.status).toBe(422);
+    expect(incorrectPrediction.body.error.code).toBe("INCORRECT_ANSWER");
+
+    const correctPrediction = await request(app)
+      .post(`/quests/${questSlug}/exercises/${predictionExerciseSlug}/complete`)
+      .set(learner)
+      .send({ answer: "4   \r\n72.5   " });
+    expect(correctPrediction.status).toBe(200);
+    expect(correctPrediction.body.status).toBe("COMPLETED");
+    expect(correctPrediction.body.completedExercises).toBe(2);
 
     const courseProgress = await request(app)
       .get(`/me/courses/${courseSlug}/progress`)

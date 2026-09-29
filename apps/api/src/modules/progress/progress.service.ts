@@ -10,6 +10,7 @@ import {
 } from "../../common/errors/AppError.js";
 
 import { awardXp } from "../gamification/gamification.service.js";
+import { predictionAnswersMatch } from "./answer-validation.js";
 
 async function getQuestForLearner(
   userId: string,
@@ -199,7 +200,15 @@ export async function completeExercise(
       );
     }
 
-    if (submittedAnswer !== expectedAnswer) {
+    const answersMatch =
+      exercise.kind === "OUTPUT_PREDICTION"
+        ? predictionAnswersMatch(
+            options.answer ?? "",
+            exercise.solution ?? "",
+          )
+        : submittedAnswer === expectedAnswer;
+
+    if (!answersMatch) {
       throw new AppError(
         "INCORRECT_ANSWER",
         "That answer is not correct yet. Try again.",

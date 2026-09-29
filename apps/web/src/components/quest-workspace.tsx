@@ -611,6 +611,7 @@ function Exercise({
           busy={busy}
           completed={completed}
           answerCorrect={answerCorrect}
+          multiline
           label="What will the program output?"
           placeholder="Type the exact output..."
           onRun={onRun}
@@ -672,12 +673,13 @@ function Exercise({
 // NON-CODE ANSWER
 // =====================================================
 
-function NonCodeAnswer({
+export function NonCodeAnswer({
   answer,
   setAnswer,
   busy,
   completed,
   answerCorrect,
+  multiline = false,
   label,
   placeholder,
   onRun,
@@ -688,6 +690,7 @@ function NonCodeAnswer({
   busy: boolean;
   completed: boolean;
   answerCorrect: boolean;
+  multiline?: boolean;
   label: string;
   placeholder: string;
   onRun: () => void;
@@ -708,22 +711,42 @@ function NonCodeAnswer({
           </div>
 
           <div className="px-6 py-6 sm:px-8">
-            <input
-              id="exercise-answer"
-              aria-label={label}
-              type="text"
-              value={answer}
-              disabled={busy}
-              autoComplete="off"
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && answer.trim() && !busy) {
-                  onRun();
-                }
-              }}
-              placeholder={placeholder}
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-5 py-4 font-mono text-sm text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
-            />
+            {multiline ? (
+              <textarea
+                id="exercise-answer"
+                aria-label={label}
+                rows={3}
+                value={answer}
+                disabled={busy}
+                autoComplete="off"
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (answer.trim() && !busy) onRun();
+                  }
+                }}
+                placeholder={placeholder}
+                className="min-h-24 w-full resize-y rounded-2xl border border-slate-700 bg-slate-950 px-5 py-4 font-mono text-sm text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
+              />
+            ) : (
+              <input
+                id="exercise-answer"
+                aria-label={label}
+                type="text"
+                value={answer}
+                disabled={busy}
+                autoComplete="off"
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && answer.trim() && !busy) {
+                    onRun();
+                  }
+                }}
+                placeholder={placeholder}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-5 py-4 font-mono text-sm text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
+              />
+            )}
 
             <div className="mt-4 flex justify-end">
               <button
