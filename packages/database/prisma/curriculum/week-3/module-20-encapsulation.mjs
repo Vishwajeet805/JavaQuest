@@ -1,13 +1,260 @@
 import { specModule, tests } from "./spec-module-builder.mjs";
-const base=(extra="")=>`class Player {private String name;private int xp;private int level;Player(String name,int xp,int level){this.name=name;this.xp=xp;this.level=level;}${extra}}`;
-const rows=[
-{slug:"encapsulation-invalid-state",title:"The Invalid State Problem",description:"Direct field writes object validity ko kaise break karti hain samjho.",problem:"Public-like fields ke saath external code `player.xp=-5000` kar sakta hai.",why:"Object ko apne rules enforce karne ke liye state changes ka control chahiye.",model:"uncontrolled write → invalid state → unreliable object",syntax:"player.level = -100; // technically possible, logically invalid",remember:"Valid object state domain rules follow karti hai.",example:"Player p=new Player();\np.xp=-500;",trace:"valid XP 0 → external write -500 → invalid Player",mistake:"Validation sirf output time par karna.",fix:"Invalid value ko object ke andar enter hi na hone do.",predict:["Negative XP valid state hai? yes/no","no"],predict2:["Direct public field object ko protect karta hai? yes/no","no"],prompt:"Invalid direct state ka result exactly `Invalid XP: -500` print karo.",starter:"class Player {int xp;}\npublic class Main {public static void main(String[] args){Player p=new Player();/* corrupt and print */}}",solution:"class Player {int xp;}\npublic class Main {public static void main(String[] args){Player p=new Player();p.xp=-500;System.out.println(\"Invalid XP: \"+p.xp);}}",tests:tests("Invalid XP: -500")},
-{slug:"encapsulation-private-fields",title:"Protect Fields with private",description:"`private` access boundary se direct external field access block karo.",problem:"State ko protect karne ka first step fields ko class ke bahar directly inaccessible banana hai.",why:"Private field sirf same class ke code se directly access hota hai.",model:"outside code ✕ → private field ← class methods ✓",syntax:"class Player {\n    private int xp;\n}",remember:"`private` value ko hide nahi, access ko control karta hai.",example:"private String name;\nprivate int level;",trace:"Main tries p.xp → compile error → must use public behaviour",mistake:"System.out.println(player.xp);",fix:"Controlled read ke liye getter introduce hoga.",predict:["Private field ko Main se direct access kar sakte hain? yes/no","no"],predict2:["`private` access kis boundary tak direct hai? Exactly enter: class","class"],prompt:"Private XP field aur class ke andar `showXp()` method use karke `XP: 100` print karo.",starter:base("void showXp(){/* print */}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);p.showXp();}}",solution:base("void showXp(){System.out.println(\"XP: \"+xp);}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);p.showXp();}}",tests:tests("XP: 100")},
-{slug:"encapsulation-getters",title:"Controlled Read with Getters",description:"Private state ko read-only public method se expose karo.",problem:"Private field direct unavailable hai, lekin callers ko legitimate value read karni ho sakti hai.",why:"Getter read access deta hai without arbitrary write access.",model:"caller → getXp() → return private xp",syntax:"public int getXp() {\n    return xp;\n}",remember:"Getter ka return type field type se match hona chahiye.",example:"System.out.println(player.getXp());",trace:"call getXp → class reads private xp → value returned",mistake:"int getXp(){ return level; }",fix:"Getter name aur returned field align karo.",predict:["`getXp()` ka return type?","int"],predict2:["Getter state modify karta hai? yes/no","no"],prompt:"Getters se exact `Aman | 100 | 1` print karo.",starter:base("public String getName(){return null;}public int getXp(){return 0;}public int getLevel(){return 0;}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);/* print getters */}}",solution:base("public String getName(){return name;}public int getXp(){return xp;}public int getLevel(){return level;}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);System.out.println(p.getName()+\" | \"+p.getXp()+\" | \"+p.getLevel());}}",tests:tests("Aman | 100 | 1")},
-{slug:"encapsulation-setters",title:"Controlled Write with Setters",description:"Setter ke through selected fields ko controlled update path do.",problem:"Some state, jaise display name, legitimately change honi chahiye.",why:"Setter future validation ke liye single controlled gate deta hai.",model:"new value → setter → field assignment",syntax:"public void setName(String name){\n    this.name=name;\n}",remember:"Har private field ko setter dena automatically good design nahi.",example:"player.setName(\"Arjun\");",trace:"incoming Arjun → setName → private name updated",mistake:"public void setName(String name){name=name;}",fix:"Shadowing resolve karne ke liye `this.name` use karo.",predict:["Setter usually value return karta hai? Exactly yes/no","no"],predict2:["Setter write ko ek controlled kya deta hai? Exactly enter: gate","gate"],prompt:"setName use karke `Arjun` print karo.",starter:base("public String getName(){return name;}public void setName(String name){/* fix */}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",0,1);p.setName(\"Arjun\");System.out.println(p.getName());}}",solution:base("public String getName(){return name;}public void setName(String name){this.name=name;}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",0,1);p.setName(\"Arjun\");System.out.println(p.getName());}}",tests:tests("Arjun")},
-{slug:"encapsulation-validation",title:"Validation in Setters",description:"Conditions reuse karke invalid updates reject karo.",problem:"Controlled gate useful tab hai jab wo object rules enforce kare.",why:"Validation class ke andar central hone se every caller same rule follow karta hai.",model:"requested level → level>0? → update : ignore",syntax:"public void setLevel(int level){\n if(level>0) this.level=level;\n}",remember:"Invalid input ke baad old valid state preserve honi chahiye.",example:"p.setLevel(-5); // ignored",trace:"level 2 → request -5 → invalid → remains 2",mistake:"if(level<0){this.level=level;}",fix:"Condition ko valid-state rule ke form me read karo.",predict:["Level 2 par setLevel(-5) ke baad level?","2"],predict2:["Validation ka correct condition: level > ?","0"],prompt:"Valid 4 accept aur invalid -2 reject karke levels print karo.",starter:base("public int getLevel(){return level;}public void setLevel(int level){/* validate */}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",0,1);p.setLevel(4);System.out.println(p.getLevel());p.setLevel(-2);System.out.println(p.getLevel());}}",solution:base("public int getLevel(){return level;}public void setLevel(int level){if(level>0)this.level=level;}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",0,1);p.setLevel(4);System.out.println(p.getLevel());p.setLevel(-2);System.out.println(p.getLevel());}}",tests:tests("4\n4")},
-{slug:"encapsulation-read-only-state",title:"Read-Only State",description:"Getter without setter se XP ko externally readable but not arbitrarily writable banao.",problem:"XP game events se earn hona chahiye; caller ko koi bhi number set nahi karna chahiye.",why:"No `setXp()` means class future behaviour method ke through XP rules own kar sakti hai.",model:"getXp ✓ | setXp ✕ | addXp next module",syntax:"public int getXp(){ return xp; }\n// no setXp",remember:"API me absent setter bhi intentional design decision hai.",example:"System.out.println(player.getXp());",trace:"caller reads 100 → cannot directly replace private field",mistake:"public void setXp(int xp){this.xp=xp;}",fix:"Domain action ko behaviour method me model karo.",predict:["Read-only XP ke liye getter chahiye? yes/no","yes"],predict2:["Arbitrary XP setter dena chahiye? yes/no","no"],prompt:"Only getXp expose karke `XP: 100` print karo.",starter:base("// Add only XP getter")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);System.out.println(\"XP: \"+p.getXp());}}",solution:base("public int getXp(){return xp;}")+"\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);System.out.println(\"XP: \"+p.getXp());}}",tests:tests("XP: 100")},
-{slug:"encapsulation-bug-hunt",title:"Encapsulation Bug Hunt",description:"Private access, wrong getter, shadowing aur inverted validation bugs fix karo.",problem:"Encapsulation code compile issues aur silent logic issues dono create kar sakta hai.",why:"Public API se interact aur class internals ko field-by-field audit karo.",model:"private fields → validated methods → trustworthy state",syntax:"getLevel(){return level;}\nsetLevel(int level){if(level>0)this.level=level;}",remember:"Getter, setter aur validation ko separately verify karo.",example:"p.setLevel(-3); System.out.println(p.getLevel());",trace:"old 2 → reject -3 → output 2",mistake:"getLevel(){return xp;}\nif(level<=0)this.level=level;",fix:"Returned field aur condition correct karo.",predict:["Wrong getter compile kar sakta hai? yes/no","yes"],predict2:["Inverted validation syntax bug hai ya logic bug?","logic bug"],prompt:"All bugs fix karke `Aman | Level 3 | XP 100` print karo.",starter:"class Player {private String name;private int xp;private int level;Player(String name,int xp,int level){this.name=name;this.xp=xp;this.level=level;}public String getName(){return name;}public int getXp(){return level;}public int getLevel(){return xp;}public void setLevel(int level){if(level<0)this.level=level;}}\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,2);p.setLevel(3);System.out.println(p.getName()+\" | Level \"+p.getLevel()+\" | XP \"+p.getXp());}}",solution:"class Player {private String name;private int xp;private int level;Player(String name,int xp,int level){this.name=name;this.xp=xp;this.level=level;}public String getName(){return name;}public int getXp(){return xp;}public int getLevel(){return level;}public void setLevel(int level){if(level>0)this.level=level;}}\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,2);p.setLevel(3);System.out.println(p.getName()+\" | Level \"+p.getLevel()+\" | XP \"+p.getXp());}}",tests:tests("Aman | Level 3 | XP 100")},
-{slug:"secure-player-account-build",title:"🏆 Secure Player Account",description:"Private fields, getters aur validation se valid account model build karo.",problem:"Final account ko blank username, non-positive level aur arbitrary XP corruption se protect karna hai.",why:"Encapsulation ka result syntax nahi—trustworthy object state hai.",model:"constructor valid start → getters read → validated level update → XP read-only",syntax:"private fields + public controlled methods",remember:"Object ke public methods uska safe contract hain.",example:"Player p=new Player(\"Aman\",100,1);\np.setLevel(3);",trace:"valid state → valid update → invalid update ignored → report",mistake:"Fields public rakhna ya `setXp()` expose karna.",fix:"Requirements ke minimum safe public API ko implement karo.",predict:["Secure fields ka access modifier?","private"],predict2:["Invalid level ke baad old state preserve? yes/no","yes"],prompt:"Secure account build karo. Private username/xp/level, getters, validated setLevel. Valid 3 then invalid -4. Exact output:\n=== SECURE ACCOUNT ===\nUser: Aman\nLevel: 3\nXP: 100",starter:"public class Main {public static void main(String[] args){\n  // Build and test secure account\n}}\n\n// Player class",solution:"class Player {private String username;private int xp;private int level;Player(String username,int xp,int level){this.username=username;this.xp=xp;this.level=level>0?level:1;}public String getUsername(){return username;}public int getXp(){return xp;}public int getLevel(){return level;}public void setLevel(int level){if(level>0)this.level=level;}}\npublic class Main {public static void main(String[] args){Player p=new Player(\"Aman\",100,1);p.setLevel(3);p.setLevel(-4);System.out.println(\"=== SECURE ACCOUNT ===\");System.out.println(\"User: \"+p.getUsername());System.out.println(\"Level: \"+p.getLevel());System.out.println(\"XP: \"+p.getXp());}}",tests:tests("=== SECURE ACCOUNT ===\nUser: Aman\nLevel: 3\nXP: 100"),minutes:34},
+
+const rows = [
+  {
+    slug: "encapsulation-invalid-state",
+    title: "The Invalid State Problem",
+    description:
+      "Direct external writes se object ki valid state kaise break hoti hai, observe karo.",
+    problem:
+      "Module 19 me humne object state ko correctly target kiya. Lekin agar outside code kisi bhi field ko kisi bhi value se replace kar sakta hai, object apne rules protect nahi kar sakta.",
+    why: "Encapsulation ki need tab clear hoti hai jab valid object ko external code invalid bana sake.",
+    model:
+      "valid Player\n   ↓ external direct write\nxp = -500\n   ↓\ninvalid Player state",
+    syntax: "player.xp = -500; // Java allow kar sakta hai, domain rule nahi",
+    remember:
+      "Syntactically assignable value zaroori nahi ki domain ke liye valid ho.",
+    example: "Player player = new Player();\nplayer.xp = -500;",
+    trace: "xp 0 → outside write -500 → object invalid",
+    mistake: "Invalid state ko sirf print/display time par detect karna.",
+    fix: "Object state tak write access ko control karna hoga.",
+    predict: ["Negative XP valid Player state hai? yes/no", "no"],
+    predict2: [
+      "Direct external field write object ko apne rules enforce karne deta hai? yes/no",
+      "no",
+    ],
+    prompt:
+      "Problem ko intentionally reproduce karo: direct write se XP -500 set karke exact `Invalid XP: -500` print karo.",
+    starter:
+      "class Player {\n    int xp;\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player();\n\n        // Outside code se invalid XP assign karke problem observe karo.\n    }\n}",
+    solution:
+      'class Player {\n    int xp;\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player();\n\n        player.xp = -500;\n        System.out.println("Invalid XP: " + player.xp);\n    }\n}',
+    tests: tests("Invalid XP: -500"),
+  },
+  {
+    slug: "encapsulation-private-fields",
+    title: "Create a Private Boundary",
+    description:
+      "`private` se object state aur outside code ke beech direct-access boundary establish karo.",
+    problem:
+      "Invalid external writes stop karne ke liye fields ko class ke bahar directly inaccessible banana hoga.",
+    why: "`private` field ko same class ka code directly use kar sakta hai, lekin caller direct read/write nahi kar sakta.",
+    model:
+      "outside code\n   ✕ direct access\n[ private state ]\n   ✓ class code",
+    syntax: "class Player {\n    private int xp;\n}",
+    remember:
+      "`private` data ko magic se hide nahi karta; direct access boundary define karta hai.",
+    example: "private String name;\nprivate int xp;\nprivate int level;",
+    trace:
+      "Main tries player.xp → access blocked → class-controlled API needed",
+    mistake: "Field private karke phir Main me `player.xp` read karna.",
+    fix: "Legitimate access ke liye class ko intentional public method expose karna hoga.",
+    predict: [
+      "Private field ko Main se directly access kar sakte hain? yes/no",
+      "no",
+    ],
+    predict2: [
+      "`private` direct access ko kis boundary tak limit karta hai? Exactly enter: class",
+      "class",
+    ],
+    prompt:
+      "XP ko private rakho. Direct field access ke bina class ke `showXp()` method se exact `XP: 100` print karo.",
+    starter:
+      "class Player {\n    private int xp;\n\n    Player(int xp) {\n        this.xp = xp;\n    }\n\n    void showXp() {\n        // Class ke andar private xp read karke print karo.\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(100);\n        player.showXp();\n    }\n}",
+    solution:
+      'class Player {\n    private int xp;\n\n    Player(int xp) {\n        this.xp = xp;\n    }\n\n    void showXp() {\n        System.out.println("XP: " + xp);\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(100);\n        player.showXp();\n    }\n}',
+    tests: tests("XP: 100"),
+  },
+  {
+    slug: "encapsulation-getters",
+    title: "Controlled Read",
+    description:
+      "Private state me se sirf required values ko getter ke through read access do.",
+    problem:
+      "Private boundary direct access stop karti hai, lekin caller ko profile display ke liye kuch values legitimately read karni hain.",
+    why: "Getter class ko decide karne deta hai ki kaunsa state public API ke through readable hoga.",
+    model: "caller\n  ↓ getName()/getLevel()\nclass API\n  ↓\nprivate state",
+    syntax: "public int getLevel() {\n    return level;\n}",
+    remember:
+      "Private field hone ka matlab har field ke liye getter compulsory nahi hai. Expose only what caller needs.",
+    example: "System.out.println(player.getName());",
+    trace: "caller → getName → class reads private name → value returned",
+    mistake: "`getLevel()` me galti se `xp` return karna.",
+    fix: "Method contract aur returned field ko align karo.",
+    predict: [
+      "`getLevel()` ka return type field `level` int ho to kya hoga?",
+      "int",
+    ],
+    predict2: ["Getter normally object state modify karta hai? yes/no", "no"],
+    prompt:
+      "Sirf required getters complete karke exact `Aman | Level 2` print karo. XP getter mat add karo.",
+    starter:
+      'class Player {\n    private String name;\n    private int xp;\n    private int level;\n\n    Player(String name, int xp, int level) {\n        this.name = name;\n        this.xp = xp;\n        this.level = level;\n    }\n\n    public String getName() {\n        // Return the correct field.\n        return null;\n    }\n\n    public int getLevel() {\n        // Return the correct field.\n        return 0;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100, 2);\n\n        System.out.println(\n            player.getName() + " | Level " + player.getLevel()\n        );\n    }\n}',
+    solution:
+      'class Player {\n    private String name;\n    private int xp;\n    private int level;\n\n    Player(String name, int xp, int level) {\n        this.name = name;\n        this.xp = xp;\n        this.level = level;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    public int getLevel() {\n        return level;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100, 2);\n\n        System.out.println(\n            player.getName() + " | Level " + player.getLevel()\n        );\n    }\n}',
+    tests: tests("Aman | Level 2"),
+  },
+  {
+    slug: "encapsulation-setters",
+    title: "Selective Write Access",
+    description:
+      "Har field ko writable banane ke bajay requirement ke basis par selected state ke liye controlled write path choose karo.",
+    problem:
+      "Display name legitimately change ho sakta hai, lekin XP jaise fields ko arbitrary replacement allow karna zaroori nahi.",
+    why: "Encapsulation ka goal getters/setters ka pair banana nahi; minimum safe public API design karna hai.",
+    model: "name → setName ✓\nxp   → setXp ✕\nlevel→ decision depends on rule",
+    syntax: "public void setName(String name) {\n    this.name = name;\n}",
+    remember:
+      "Private field ≠ automatic setter. Public API requirement se decide hoti hai.",
+    example: 'player.setName("Arjun");',
+    trace: "caller requests Arjun → setName gate → private name updated",
+    mistake: "Har private field ke liye blindly setter generate karna.",
+    fix: "Pehle poochho: caller ko ye exact arbitrary write permission chahiye bhi ya nahi?",
+    predict: ["Har private field ke liye setter mandatory hai? yes/no", "no"],
+    predict2: [
+      "Name update ke controlled method ka naam yahan kya hai?",
+      "setName",
+    ],
+    prompt:
+      "Sirf name ko externally writable banao. `setName` implement karo; XP setter mat add karo. Exact output: `Arjun`.",
+    starter:
+      'class Player {\n    private String name;\n    private int xp;\n\n    Player(String name, int xp) {\n        this.name = name;\n        this.xp = xp;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    public void setName(String name) {\n        // Only name should be externally replaceable.\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100);\n\n        player.setName("Arjun");\n        System.out.println(player.getName());\n    }\n}',
+    solution:
+      'class Player {\n    private String name;\n    private int xp;\n\n    Player(String name, int xp) {\n        this.name = name;\n        this.xp = xp;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    public void setName(String name) {\n        this.name = name;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100);\n\n        player.setName("Arjun");\n        System.out.println(player.getName());\n    }\n}',
+    tests: tests("Arjun"),
+  },
+  {
+    slug: "encapsulation-validation",
+    title: "Validation Gate",
+    description:
+      "Controlled write method ko object invariant enforce karne wali validation boundary banao.",
+    problem:
+      "Setter hone se write controlled route se aati hai, lekin route ko invalid values reject bhi karni chahiye.",
+    why: "Rule class ke andar central hone par har caller same valid-state contract follow karta hai.",
+    model:
+      "requested level\n      ↓\nlevel > 0 ?\n  ↙       ↘\nyes       no\nupdate   preserve old state",
+    syntax:
+      "public void setLevel(int level) {\n    if (level > 0) {\n        this.level = level;\n    }\n}",
+    remember:
+      "Invalid request ke baad last valid state preserve rehni chahiye.",
+    example: "level 2 → setLevel(4) → 4 → setLevel(-2) → still 4",
+    trace: "1 → valid 4 accepted → invalid -2 rejected → final 4",
+    mistake: "`if (level <= 0) this.level = level;`",
+    fix: "Condition ko valid-state rule ke roop me likho, invalid-state assignment ke roop me nahi.",
+    predict: ["Level 4 par `setLevel(-2)` ke baad level kya rahega?", "4"],
+    predict2: ["Valid level condition `level > ?`", "0"],
+    prompt:
+      "Validation gate implement karo. Valid 4 accept karo, invalid -2 reject karo. Exact output:\n4\n4",
+    starter:
+      "class Player {\n    private int level;\n\n    Player(int level) {\n        this.level = level;\n    }\n\n    public int getLevel() {\n        return level;\n    }\n\n    public void setLevel(int level) {\n        // Only positive levels may enter the object.\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(1);\n\n        player.setLevel(4);\n        System.out.println(player.getLevel());\n\n        player.setLevel(-2);\n        System.out.println(player.getLevel());\n    }\n}",
+    solution:
+      "class Player {\n    private int level;\n\n    Player(int level) {\n        this.level = level;\n    }\n\n    public int getLevel() {\n        return level;\n    }\n\n    public void setLevel(int level) {\n        if (level > 0) {\n            this.level = level;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(1);\n\n        player.setLevel(4);\n        System.out.println(player.getLevel());\n\n        player.setLevel(-2);\n        System.out.println(player.getLevel());\n    }\n}",
+    tests: tests("4\n4"),
+  },
+  {
+    slug: "encapsulation-read-only-state",
+    title: "Design Read-Only State",
+    description:
+      "Getter without setter use karke state ko observable but not arbitrarily replaceable design karo.",
+    problem:
+      "Caller ko XP display karna hai, lekin `setXp(999999)` jaisa arbitrary replacement domain rule ko bypass karega.",
+    why: "Public API me setter ka absent hona bhi design decision hai. Class future me XP changes ko meaningful behaviour ke through own kar sakti hai.",
+    model:
+      "getXp() ✓ read\nsetXp(...) ✕ arbitrary replace\n\nfuture Module 21:\nmeaningful behaviour → controlled state transition",
+    syntax:
+      "public int getXp() {\n    return xp;\n}\n// intentionally no setXp",
+    remember: "Read access aur write access separate permissions hain.",
+    example: "System.out.println(player.getXp());",
+    trace:
+      "caller reads XP 100 → cannot directly write private xp → object retains write control",
+    mistake: "Convenience ke liye `setXp(int xp)` expose kar dena.",
+    fix: "API ko actual requirement tak minimum rakho.",
+    predict: ["Read-only XP ke liye getter useful hai? yes/no", "yes"],
+    predict2: ["Arbitrary `setXp` expose karna zaroori hai? yes/no", "no"],
+    prompt:
+      "XP ko readable but not arbitrarily writable rakho. Only `getXp()` add karke exact `XP: 100` print karo.",
+    starter:
+      'class Player {\n    private int xp;\n\n    Player(int xp) {\n        this.xp = xp;\n    }\n\n    // Add only the read API required by Main.\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(100);\n        System.out.println("XP: " + player.getXp());\n    }\n}',
+    solution:
+      'class Player {\n    private int xp;\n\n    Player(int xp) {\n        this.xp = xp;\n    }\n\n    public int getXp() {\n        return xp;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player(100);\n        System.out.println("XP: " + player.getXp());\n    }\n}',
+    tests: tests("XP: 100"),
+  },
+  {
+    slug: "encapsulation-bug-hunt",
+    title: "Encapsulation Bug Hunt",
+    description:
+      "Leaky API, wrong getter mapping, shadowing aur inverted validation ko ek saath diagnose karo.",
+    problem:
+      "Encapsulation bugs sirf compile errors nahi hote. Wrong getter ya inverted validation syntactically valid hoke object contract break kar sakte hain.",
+    why: "Safe class audit me access boundary, read mapping, write mapping aur validation ko separately verify karna hota hai.",
+    model:
+      "AUDIT\n1 private boundary?\n2 getter → correct field?\n3 setter → correct field?\n4 validation → accepts only valid state?",
+    syntax:
+      "public int getLevel() {\n    return level;\n}\n\npublic void setLevel(int level) {\n    if (level > 0) {\n        this.level = level;\n    }\n}",
+    remember:
+      "Compile success ke baad bhi public API contract ko semantic level par test karo.",
+    example: "valid level 2 → setLevel(3) → 3 → setLevel(-5) → remains 3",
+    trace:
+      "correct getters → valid 3 accepted → invalid -5 rejected → trustworthy report",
+    mistake:
+      "getXp returns level; setName uses name=name; invalid level accepted.",
+    fix: "Har method ko uske public contract ke against independently audit karo.",
+    predict: [
+      "Wrong getter correct type return kare to code compile kar sakta hai? yes/no",
+      "yes",
+    ],
+    predict2: ["Inverted validation syntax bug hai ya logic bug?", "logic bug"],
+    prompt:
+      "Saare semantic bugs fix karo. Valid level 3 accept aur invalid -5 reject hona chahiye. Exact output: `Arjun | Level 3 | XP 100`.",
+    starter:
+      'class Player {\n    private String name;\n    private int xp;\n    private int level;\n\n    Player(String name, int xp, int level) {\n        this.name = name;\n        this.xp = xp;\n        this.level = level;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    public int getXp() {\n        return level; // bug\n    }\n\n    public int getLevel() {\n        return level;\n    }\n\n    public void setName(String name) {\n        name = name; // bug\n    }\n\n    public void setLevel(int level) {\n        if (level <= 0) { // bug\n            this.level = level;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100, 2);\n\n        player.setName("Arjun");\n        player.setLevel(3);\n        player.setLevel(-5);\n\n        System.out.println(\n            player.getName()\n                + " | Level " + player.getLevel()\n                + " | XP " + player.getXp()\n        );\n    }\n}',
+    solution:
+      'class Player {\n    private String name;\n    private int xp;\n    private int level;\n\n    Player(String name, int xp, int level) {\n        this.name = name;\n        this.xp = xp;\n        this.level = level;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    public int getXp() {\n        return xp;\n    }\n\n    public int getLevel() {\n        return level;\n    }\n\n    public void setName(String name) {\n        this.name = name;\n    }\n\n    public void setLevel(int level) {\n        if (level > 0) {\n            this.level = level;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("Aman", 100, 2);\n\n        player.setName("Arjun");\n        player.setLevel(3);\n        player.setLevel(-5);\n\n        System.out.println(\n            player.getName()\n                + " | Level " + player.getLevel()\n                + " | XP " + player.getXp()\n        );\n    }\n}',
+    tests: tests("Arjun | Level 3 | XP 100"),
+  },
+  {
+    slug: "secure-player-account-build",
+    title: "🏆 Secure Player Account",
+    description:
+      "Requirements se minimum safe public API design karke valid account state independently protect karo.",
+    problem:
+      "Account ko blank username, negative XP, non-positive level aur arbitrary XP replacement se protect karna hai—without blindly exposing setters.",
+    why: "Encapsulation ka final result boilerplate getters/setters nahi; aisa object contract hai jisme invalid state enter karna difficult ho.",
+    model:
+      "constructor input\n   ↓ validate starting state\nprivate fields\n   ↓\ngetters for required reads\n   ↓\nvalidated selected writes\n   ↓\ntrustworthy account",
+    syntax:
+      "private fields\n+ validated constructor\n+ required getters\n+ validated setUsername/setLevel\n+ no setXp",
+    remember:
+      "Module 20 ka focus access + validity hai. XP earn karne jaise domain behaviour Module 21 me aayenge.",
+    example: "blank username → Guest\nnegative XP → 0\ninvalid level → 1",
+    trace:
+      "blank/-50/0 → Guest/0/1 → username Aman → level 3 → invalid -4 rejected → final Aman/0/3",
+    mistake:
+      "Constructor me invalid starting values accept karna ya arbitrary `setXp()` expose karna.",
+    fix: "Starting state aur later updates dono same validity rules respect karein; API minimum rakho.",
+    predict: [
+      "Blank username ka safe fallback is challenge me kya hai?",
+      "Guest",
+    ],
+    predict2: ["Negative starting XP ka safe fallback kya hai?", "0"],
+    prompt:
+      "Secure Player Account build karo. `username`, `xp`, `level` private hon. Constructor rules: blank username → `Guest`, negative XP → 0, non-positive level → 1. Required getters banao. `setUsername` blank values reject kare; `setLevel` non-positive values reject kare. `setXp` mat banao. Start with blank username, XP -50, level 0; then username `Aman`, level 3, then invalid level -4 try karo. Exact output:\n=== SECURE ACCOUNT ===\nUser: Aman\nLevel: 3\nXP: 0",
+    starter:
+      'class Player {\n    // Design private state and the minimum safe public API.\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        // 1) Start with invalid values: "", -50, 0.\n        // 2) Update username to Aman and level to 3.\n        // 3) Try invalid level -4.\n        // 4) Print the required secure account report.\n    }\n}',
+    solution:
+      'class Player {\n    private String username;\n    private int xp;\n    private int level;\n\n    Player(String username, int xp, int level) {\n        if (username != null && !username.isBlank()) {\n            this.username = username;\n        } else {\n            this.username = "Guest";\n        }\n\n        if (xp >= 0) {\n            this.xp = xp;\n        } else {\n            this.xp = 0;\n        }\n\n        if (level > 0) {\n            this.level = level;\n        } else {\n            this.level = 1;\n        }\n    }\n\n    public String getUsername() {\n        return username;\n    }\n\n    public int getXp() {\n        return xp;\n    }\n\n    public int getLevel() {\n        return level;\n    }\n\n    public void setUsername(String username) {\n        if (username != null && !username.isBlank()) {\n            this.username = username;\n        }\n    }\n\n    public void setLevel(int level) {\n        if (level > 0) {\n            this.level = level;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Player player = new Player("", -50, 0);\n\n        player.setUsername("Aman");\n        player.setLevel(3);\n        player.setLevel(-4);\n\n        System.out.println("=== SECURE ACCOUNT ===");\n        System.out.println("User: " + player.getUsername());\n        System.out.println("Level: " + player.getLevel());\n        System.out.println("XP: " + player.getXp());\n    }\n}',
+    tests: tests("=== SECURE ACCOUNT ===\nUser: Aman\nLevel: 3\nXP: 0"),
+    minutes: 34,
+  },
 ];
-export const encapsulationModule=specModule({slug:"week-3-encapsulation",title:"Week 3 — Encapsulation",description:"Private state, controlled access aur validation se objects ko valid aur trustworthy rakho.",position:20},rows);
+
+export const encapsulationModule = specModule(
+  {
+    slug: "week-3-encapsulation",
+    title: "Week 3 — Encapsulation",
+    description:
+      "Private boundaries, selective access aur validation se minimum safe public API design karke object state ko valid aur trustworthy rakho.",
+    position: 20,
+  },
+  rows,
+);
