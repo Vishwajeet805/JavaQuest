@@ -1,36 +1,134 @@
 import { PrismaClient } from "@prisma/client";
-import { randomBytes, scrypt } from "node:crypto";
-import { promisify } from "node:util";
 
 import { javaMasteryModules } from "./curriculum/index.mjs";
 
 const prisma = new PrismaClient();
 
-const scryptAsync = promisify(scrypt);
 
 function createdItems(relation) {
   return relation?.create ?? [];
 }
 
+function sourceSlugs(items) {
+  return items.map((item) => item.slug);
+}
+
+function maxPosition(rows) {
+  return rows.reduce(
+    (max, row) => Math.max(max, row.position),
+    0,
+  );
+}
+
+async function parkPositions(model, where, rows, sourceItems = []) {
+  if (rows.length === 0) {
+    return;
+  }
+
+  const highestPosition = Math.max(
+    maxPosition(rows),
+    ...sourceItems.map((item) => item.position),
+    0,
+  );
+
+  const offset = highestPosition + rows.length + sourceItems.length + 1000;
+
+  for (let index = 0; index < rows.length; index += 1) {
+    await model.update({
+      where: {
+        id: rows[index].id,
+      },
+      data: {
+        position: offset + index,
+      },
+    });
+  }
+}
+
+async function assertNoProtectedExerciseData(tx, exerciseIds, context) {
+  if (exerciseIds.length === 0) {
+    return;
+  }
+
+  const [submissions, progress] = await Promise.all([
+    tx.submission.count({
+      where: {
+        exerciseId: {
+          in: exerciseIds,
+        },
+      },
+    }),
+    tx.exerciseProgress.count({
+      where: {
+        exerciseId: {
+          in: exerciseIds,
+        },
+      },
+    }),
+  ]);
+
+  if (submissions > 0 || progress > 0) {
+    throw new Error(
+      `Refusing to delete stale exercises in ${context}: ` +
+        `${submissions} submission(s) and ${progress} progress row(s) still reference them. ` +
+        "Preserve/rename the source slug or add an explicit data migration.",
+    );
+  }
+}
+
+async function assertNoProtectedQuestData(tx, questIds, context) {
+  if (questIds.length === 0) {
+    return;
+  }
+
+  const progress = await tx.questProgress.count({
+    where: {
+      questId: {
+        in: questIds,
+      },
+    },
+  });
+
+  const exercises = await tx.exercise.findMany({
+    where: {
+      questId: {
+        in: questIds,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  await assertNoProtectedExerciseData(
+    tx,
+    exercises.map((exercise) => exercise.id),
+    context,
+  );
+
+  if (progress > 0) {
+    throw new Error(
+      `Refusing to delete stale quests in ${context}: ` +
+        `${progress} quest progress row(s) still reference them. ` +
+        "Preserve/rename the source slug or add an explicit data migration.",
+    );
+  }
+}
+
 async function syncTestCases(tx, exerciseId, testCasesRelation) {
   const testCases = createdItems(testCasesRelation);
 
+  // TestCase has no user-owned relations. Replacing this child collection
+  // guarantees that removed/renumbered hidden tests cannot remain stale.
+  await tx.testCase.deleteMany({
+    where: {
+      exerciseId,
+    },
+  });
+
   for (const testCase of testCases) {
-    await tx.testCase.upsert({
-      where: {
-        exerciseId_position: {
-          exerciseId,
-          position: testCase.position,
-        },
-      },
-
-      update: {
-        input: testCase.input ?? null,
-        expectedOutput: testCase.expectedOutput,
-        isHidden: testCase.isHidden ?? false,
-      },
-
-      create: {
+    await tx.testCase.create({
+      data: {
         exerciseId,
         position: testCase.position,
         input: testCase.input ?? null,
@@ -43,6 +141,47 @@ async function syncTestCases(tx, exerciseId, testCasesRelation) {
 
 async function syncExercises(tx, questId, exercisesRelation) {
   const exercises = createdItems(exercisesRelation);
+
+  const existing = await tx.exercise.findMany({
+    where: {
+      questId,
+    },
+    select: {
+      id: true,
+      slug: true,
+      position: true,
+    },
+  });
+
+  // Move existing rows out of the source position range first. This makes
+  // position swaps safe while preserving stable exercise IDs.
+  await parkPositions(
+    tx.exercise,
+    { questId },
+    existing,
+    exercises,
+  );
+
+  const wantedSlugs = new Set(sourceSlugs(exercises));
+  const stale = existing.filter(
+    (exercise) => !wantedSlugs.has(exercise.slug),
+  );
+
+  await assertNoProtectedExerciseData(
+    tx,
+    stale.map((exercise) => exercise.id),
+    `quest ${questId}`,
+  );
+
+  if (stale.length > 0) {
+    await tx.exercise.deleteMany({
+      where: {
+        id: {
+          in: stale.map((exercise) => exercise.id),
+        },
+      },
+    });
+  }
 
   for (const exercise of exercises) {
     const savedExercise = await tx.exercise.upsert({
@@ -89,6 +228,41 @@ async function syncExercises(tx, questId, exercisesRelation) {
 async function syncLessons(tx, questId, lessonsRelation) {
   const lessons = createdItems(lessonsRelation);
 
+  const existing = await tx.lesson.findMany({
+    where: {
+      questId,
+    },
+    select: {
+      id: true,
+      slug: true,
+      position: true,
+    },
+  });
+
+  await parkPositions(
+    tx.lesson,
+    { questId },
+    existing,
+    lessons,
+  );
+
+  // Lesson currently has no learner-progress/submission relation, so stale
+  // lesson rows can be removed without destroying learner-owned records.
+  const wantedSlugs = new Set(sourceSlugs(lessons));
+  const staleIds = existing
+    .filter((lesson) => !wantedSlugs.has(lesson.slug))
+    .map((lesson) => lesson.id);
+
+  if (staleIds.length > 0) {
+    await tx.lesson.deleteMany({
+      where: {
+        id: {
+          in: staleIds,
+        },
+      },
+    });
+  }
+
   for (const lesson of lessons) {
     await tx.lesson.upsert({
       where: {
@@ -119,6 +293,45 @@ async function syncLessons(tx, questId, lessonsRelation) {
 
 async function syncQuests(tx, moduleId, questsRelation) {
   const quests = createdItems(questsRelation);
+
+  const existing = await tx.quest.findMany({
+    where: {
+      moduleId,
+    },
+    select: {
+      id: true,
+      slug: true,
+      position: true,
+    },
+  });
+
+  await parkPositions(
+    tx.quest,
+    { moduleId },
+    existing,
+    quests,
+  );
+
+  const wantedSlugs = new Set(sourceSlugs(quests));
+  const stale = existing.filter(
+    (quest) => !wantedSlugs.has(quest.slug),
+  );
+
+  await assertNoProtectedQuestData(
+    tx,
+    stale.map((quest) => quest.id),
+    `module ${moduleId}`,
+  );
+
+  if (stale.length > 0) {
+    await tx.quest.deleteMany({
+      where: {
+        id: {
+          in: stale.map((quest) => quest.id),
+        },
+      },
+    });
+  }
 
   for (const quest of quests) {
     const savedQuest = await tx.quest.upsert({
@@ -163,6 +376,56 @@ async function syncQuests(tx, moduleId, questsRelation) {
 }
 
 async function syncModules(tx, courseId, modules) {
+  const existing = await tx.courseModule.findMany({
+    where: {
+      courseId,
+    },
+    select: {
+      id: true,
+      slug: true,
+      position: true,
+    },
+  });
+
+  await parkPositions(
+    tx.courseModule,
+    { courseId },
+    existing,
+    modules,
+  );
+
+  const wantedSlugs = new Set(sourceSlugs(modules));
+  const staleModules = existing.filter(
+    (module) => !wantedSlugs.has(module.slug),
+  );
+
+  for (const staleModule of staleModules) {
+    const staleQuests = await tx.quest.findMany({
+      where: {
+        moduleId: staleModule.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await assertNoProtectedQuestData(
+      tx,
+      staleQuests.map((quest) => quest.id),
+      `module ${staleModule.slug}`,
+    );
+  }
+
+  if (staleModules.length > 0) {
+    await tx.courseModule.deleteMany({
+      where: {
+        id: {
+          in: staleModules.map((module) => module.id),
+        },
+      },
+    });
+  }
+
   for (const module of modules) {
     console.log(
       `Syncing module ${module.position}: ${module.title}`,
@@ -202,22 +465,108 @@ async function syncModules(tx, courseId, modules) {
   }
 }
 
+async function verifyCurriculum(tx, courseId, modules) {
+  const dbModules = await tx.courseModule.findMany({
+    where: {
+      courseId,
+    },
+    include: {
+      quests: {
+        include: {
+          lessons: true,
+          exercises: {
+            include: {
+              testCases: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (dbModules.length !== modules.length) {
+    throw new Error(
+      `Curriculum convergence failed: source has ${modules.length} modules, DB has ${dbModules.length}.`,
+    );
+  }
+
+  for (const module of modules) {
+    const dbModule = dbModules.find(
+      (candidate) => candidate.slug === module.slug,
+    );
+
+    if (!dbModule || dbModule.position !== module.position) {
+      throw new Error(
+        `Curriculum convergence failed for module ${module.slug}.`,
+      );
+    }
+
+    const quests = createdItems(module.quests);
+
+    if (dbModule.quests.length !== quests.length) {
+      throw new Error(
+        `Curriculum convergence failed for module ${module.slug}: quest count differs.`,
+      );
+    }
+
+    for (const quest of quests) {
+      const dbQuest = dbModule.quests.find(
+        (candidate) => candidate.slug === quest.slug,
+      );
+
+      if (!dbQuest || dbQuest.position !== quest.position) {
+        throw new Error(
+          `Curriculum convergence failed for quest ${quest.slug}.`,
+        );
+      }
+
+      const lessons = createdItems(quest.lessons);
+      const exercises = createdItems(quest.exercises);
+
+      if (dbQuest.lessons.length !== lessons.length) {
+        throw new Error(
+          `Curriculum convergence failed for quest ${quest.slug}: lesson count differs.`,
+        );
+      }
+
+      if (dbQuest.exercises.length !== exercises.length) {
+        throw new Error(
+          `Curriculum convergence failed for quest ${quest.slug}: exercise count differs.`,
+        );
+      }
+
+      for (const exercise of exercises) {
+        const dbExercise = dbQuest.exercises.find(
+          (candidate) => candidate.slug === exercise.slug,
+        );
+
+        if (!dbExercise || dbExercise.position !== exercise.position) {
+          throw new Error(
+            `Curriculum convergence failed for exercise ${quest.slug}/${exercise.slug}.`,
+          );
+        }
+
+        const testCases = createdItems(exercise.testCases);
+
+        if (dbExercise.testCases.length !== testCases.length) {
+          throw new Error(
+            `Curriculum convergence failed for exercise ${quest.slug}/${exercise.slug}: test count differs.`,
+          );
+        }
+      }
+    }
+  }
+
+  console.log("Curriculum source ↔ database convergence verified.");
+}
+
 async function main() {
-  const salt = randomBytes(16).toString("hex");
-
-  const key = await scryptAsync(
-    "AdminPass123!",
-    salt,
-    64,
-  );
-
-  const passwordHash =
-    `scrypt$${salt}$${key.toString("hex")}`;
-
   // --------------------------------------------
   // ADMIN
   // --------------------------------------------
 
+  // Curriculum seeding must never rotate an existing account password.
+  // The bootstrap admin is created only if it does not already exist.
   await prisma.user.upsert({
     where: {
       email: "admin@javaquets.dev",
@@ -225,14 +574,13 @@ async function main() {
 
     update: {
       role: "ADMIN",
-      passwordHash,
     },
 
     create: {
       email: "admin@javaquets.dev",
       displayName: "JavaQuets Admin",
       role: "ADMIN",
-      passwordHash,
+      passwordHash: null,
     },
   });
 
@@ -267,10 +615,24 @@ async function main() {
   // CURRICULUM
   // --------------------------------------------
 
-  await syncModules(
-    prisma,
-    course.id,
-    javaMasteryModules,
+  await prisma.$transaction(
+    async (tx) => {
+      await syncModules(
+        tx,
+        course.id,
+        javaMasteryModules,
+      );
+
+      await verifyCurriculum(
+        tx,
+        course.id,
+        javaMasteryModules,
+      );
+    },
+    {
+      maxWait: 10000,
+      timeout: 120000,
+    },
   );
 
   console.log(
