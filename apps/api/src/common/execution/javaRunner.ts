@@ -54,7 +54,11 @@ async function runOnlineCompiler(
         signal: controller.signal,
       },
     );
-
+console.log("[java-runner] OnlineCompiler response", {
+  status: response.status,
+  statusText: response.statusText,
+  ok: response.ok,
+});
     if (!response.ok) {
       increment("javaquets_runner_executions_total", {
         outcome: response.status === 429 ? "busy" : "unavailable",
@@ -71,13 +75,22 @@ async function runOnlineCompiler(
 
     const result = (await response.json()) as OnlineCompilerResponse;
 
-    if (
-      typeof result.output !== "string" ||
-      typeof result.error !== "string" ||
-      typeof result.exit_code !== "number"
-    ) {
-      throw new Error("OnlineCompiler returned an invalid response");
-    }
+   if (
+  typeof result.output !== "string" ||
+  typeof result.error !== "string" ||
+  typeof result.exit_code !== "number"
+) {
+  console.error("[java-runner] Invalid OnlineCompiler response", {
+    hasOutput: typeof result.output === "string",
+    hasError: typeof result.error === "string",
+    exitCode: result.exit_code,
+    status: result.status,
+    signal: result.signal,
+    time: result.time,
+  });
+
+  throw new Error("OnlineCompiler returned an invalid response");
+}
 
     const runtimeMs =
       Number.isFinite(Number(result.time))
@@ -117,18 +130,40 @@ async function runOnlineCompiler(
       outputLimitExceeded,
     };
   } catch (error) {
-    if (error instanceof AppError) throw error;
-
-    increment("javaquets_runner_executions_total", {
-      outcome: "unavailable",
+    } catch (error) {
+  if (error instanceof AppError) {
+    console.error("[java-runner] OnlineCompiler AppError", {
+      name: error.name,
+      message: error.message,
     });
 
-    throw new AppError(
-      "RUNNER_UNAVAILABLE",
-      "Execution service is temporarily unavailable",
-      503,
-    );
-  } finally {
+    throw error;
+  }
+
+  console.error("[java-runner] OnlineCompiler unexpected error", {
+    name: error instanceof Error ? error.name : "UnknownError",
+    message:
+      error instanceof Error
+        ? error.message
+        : String(error),
+    cause:
+      error instanceof Error && "cause" in error
+        ? String(error.cause)
+        : undefined,
+    aborted: controller.signal.aborted,
+    elapsedMs: Date.now() - started,
+  });
+
+  increment("javaquets_runner_executions_total", {
+    outcome: "unavailable",
+  });
+
+  throw new AppError(
+    "RUNNER_UNAVAILABLE",
+    "Execution service is temporarily unavailable",
+    503,
+  );
+}finally {
     clearTimeout(timer);
 
     observe(
@@ -200,7 +235,16 @@ export async function runJavaSource(
   stdin = "",
   timeoutMs = 5000
 ): Promise<JavaRunResult> {
-
+console.log("[java-runner] Execution requested", {
+  provider: env.ONLINECOMPILER_API_KEY
+    ? "onlinecompiler"
+    : env.RUNNER_SERVICE_URL
+      ? "remote-runner"
+      : "local-docker",
+  timeoutMs,
+  sourceLength: sourceCode.length,
+  stdinLength: stdin.length,
+});
   if (env.ONLINECOMPILER_API_KEY) {
     return runOnlineCompiler(sourceCode, stdin, timeoutMs);
   }
