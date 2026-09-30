@@ -186,7 +186,63 @@ async function syncTestCases(tx, exerciseId, testCasesRelation) {
 
 async function syncExercises(tx, questId, exercisesRelation) {
   const exercises = createdItems(exercisesRelation);
+// Explicit curriculum identity migrations.
+// Preserve the existing Exercise row/ID so learner progress remains attached.
+const exerciseSlugMigrations = {
+  "inheritance-parent-aur-child-class-check":
+    "inheritance-parent-aur-child-class-concept-check",
+};
 
+for (const [oldSlug, newSlug] of Object.entries(exerciseSlugMigrations)) {
+  const sourceExercise = exercises.find(
+    (exercise) => exercise.slug === newSlug,
+  );
+
+  if (!sourceExercise) {
+    continue;
+  }
+
+  const oldExercise = await tx.exercise.findUnique({
+    where: {
+      questId_slug: {
+        questId,
+        slug: oldSlug,
+      },
+    },
+  });
+
+  if (!oldExercise) {
+    continue;
+  }
+
+  const newExercise = await tx.exercise.findUnique({
+    where: {
+      questId_slug: {
+        questId,
+        slug: newSlug,
+      },
+    },
+  });
+
+  if (newExercise) {
+    throw new Error(
+      `Cannot migrate exercise slug ${oldSlug} -> ${newSlug}: both rows already exist.`,
+    );
+  }
+
+  console.log(
+    `Migrating exercise identity: ${oldSlug} -> ${newSlug}`,
+  );
+
+  await tx.exercise.update({
+    where: {
+      id: oldExercise.id,
+    },
+    data: {
+      slug: newSlug,
+    },
+  });
+}
   const existing = await tx.exercise.findMany({
     where: {
       questId,
