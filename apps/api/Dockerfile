@@ -25,8 +25,14 @@ RUN pnpm --filter @javaquets/database db:generate \
   && pnpm --filter @javaquets/api build
 
 
+FROM eclipse-temurin:21-jdk-jammy AS jdk
+
 FROM node:20-bookworm-slim AS runtime
 
+COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="/opt/java/openjdk/bin:${PATH}"
+ENV JAVA_RUNNER_PROVIDER=direct
 ENV NODE_ENV=production
 
 WORKDIR /app
@@ -48,6 +54,13 @@ COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY package.json pnpm-workspace.yaml ./
 
 USER node
+# Build-time smoke check under the actual runtime user, including temp writes.
+RUN java -version && javac -version \
+  && workspace="$(mktemp -d)" \
+  && printf '%s\n' 'class Quest {} public class Main { public static void main(String[] args) { System.out.println("jdk-ready"); } }' > "$workspace/Main.java" \
+  && javac "$workspace/Main.java" \
+  && java -Xmx64m -cp "$workspace" Main \
+  && rm -r "$workspace"
 
 EXPOSE 4000
 
