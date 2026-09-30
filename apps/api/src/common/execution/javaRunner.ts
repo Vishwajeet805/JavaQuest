@@ -74,7 +74,14 @@ console.log("[java-runner] OnlineCompiler response", {
     }
 
     const result = (await response.json()) as OnlineCompilerResponse;
-
+console.log("[java-runner] OnlineCompiler raw response shape", {
+  type: typeof result,
+  isArray: Array.isArray(result),
+  keys:
+    result && typeof result === "object"
+      ? Object.keys(result as Record<string, unknown>)
+      : [],
+});
    if (
   typeof result.output !== "string" ||
   typeof result.error !== "string" ||
