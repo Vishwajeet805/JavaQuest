@@ -129,7 +129,7 @@ console.log("[java-runner] OnlineCompiler response", {
       timedOut,
       outputLimitExceeded,
     };
-  } catch (error) {
+  
     } catch (error) {
   if (error instanceof AppError) {
     console.error("[java-runner] OnlineCompiler AppError", {
