@@ -36,13 +36,18 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -67,3 +72,17 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  api-image-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API runtime image
+        run: docker build --file apps/api/Dockerfile --tag javaquets-api:ci .
+      - name: Verify non-root JDK 21 runtime
+        run: |
+          docker run --rm --entrypoint sh javaquets-api:ci -ec '
+            test "$(id -u)" -ne 0
+            java -version 2>&1 | grep -E "version \"21(\.|\")"
+            javac -version 2>&1 | grep -E "^javac 21(\.|$)"
+          '

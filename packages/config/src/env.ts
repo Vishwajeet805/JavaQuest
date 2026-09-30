@@ -8,9 +8,9 @@ const envSchema = z
 
     DATABASE_URL: z.string().min(1),
     ONLINECOMPILER_API_KEY: z.preprocess(
-  (value) => value === "" ? undefined : value,
-  z.string().min(20).optional(),
-),
+      (value) => (value === "" ? undefined : value),
+      z.string().min(20).optional(),
+    ),
     API_PORT: z.coerce.number().default(4000),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
@@ -40,6 +40,33 @@ const envSchema = z
       (value) => (value === "" ? undefined : value),
       z.string().min(24).optional(),
     ),
+    JAVA_RUNNER_PROVIDER: z
+      .enum(["direct", "onlinecompiler", "remote", "docker"])
+      .default("direct"),
+    RUNNER_COMPILE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(60000)
+      .default(10000),
+    RUNNER_EXECUTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(60000)
+      .default(5000),
+    RUNNER_MAX_SOURCE_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1048576)
+      .default(50000),
+    RUNNER_MAX_STDIN_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1048576)
+      .default(65536),
     JAVA_RUNNER_IMAGE: z.string().min(1).default("javaquets-java-runner:local"),
     RUNNER_SERVICE_URL: z.preprocess(
       (value) => (value === "" ? undefined : value),
@@ -65,6 +92,21 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["WEB_ORIGIN"],
         message: "HTTPS is required in production",
+      });
+    if (
+      value.JAVA_RUNNER_PROVIDER === "onlinecompiler" &&
+      !value.ONLINECOMPILER_API_KEY
+    )
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ONLINECOMPILER_API_KEY"],
+        message: "Required for onlinecompiler provider",
+      });
+    if (value.JAVA_RUNNER_PROVIDER === "remote" && !value.RUNNER_SERVICE_URL)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RUNNER_SERVICE_URL"],
+        message: "Required for remote provider",
       });
     if (value.RUNNER_SERVICE_URL && !value.RUNNER_SERVICE_TOKEN) {
       ctx.addIssue({
