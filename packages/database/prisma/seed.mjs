@@ -45,35 +45,78 @@ async function parkPositions(model, where, rows, sourceItems = []) {
   }
 }
 
-async function assertNoProtectedExerciseData(tx, exerciseIds, context) {
-  if (exerciseIds.length === 0) {
+async function assertNoProtectedExerciseData(
+  tx,
+  staleExercises,
+  context,
+  sourceExercises = [],
+) {
+  if (staleExercises.length === 0) {
     return;
   }
 
-  const [submissions, progress] = await Promise.all([
-    tx.submission.count({
-      where: {
-        exerciseId: {
-          in: exerciseIds,
-        },
-      },
-    }),
-    tx.exerciseProgress.count({
-      where: {
-        exerciseId: {
-          in: exerciseIds,
-        },
-      },
-    }),
-  ]);
+  const problems = [];
 
-  if (submissions > 0 || progress > 0) {
-    throw new Error(
-      `Refusing to delete stale exercises in ${context}: ` +
-        `${submissions} submission(s) and ${progress} progress row(s) still reference them. ` +
-        "Preserve/rename the source slug or add an explicit data migration.",
-    );
+  for (const exercise of staleExercises) {
+    const [submissions, progress] = await Promise.all([
+      tx.submission.count({
+        where: {
+          exerciseId: exercise.id,
+        },
+      }),
+      tx.exerciseProgress.count({
+        where: {
+          exerciseId: exercise.id,
+        },
+      }),
+    ]);
+
+    if (submissions > 0 || progress > 0) {
+      problems.push({
+        slug: exercise.slug,
+        position: exercise.position,
+        submissions,
+        progress,
+      });
+    }
   }
+
+  if (problems.length === 0) {
+    return;
+  }
+
+  const staleDetails = problems
+    .map(
+      (exercise) =>
+        `  - ${exercise.slug} | position ${exercise.position} | submissions ${exercise.submissions} | progress ${exercise.progress}`,
+    )
+    .join("\n");
+
+  const sourceDetails =
+    sourceExercises.length === 0
+      ? "  (none)"
+      : sourceExercises
+          .map(
+            (exercise) =>
+              `  - ${exercise.slug} | position ${exercise.position}`,
+          )
+          .join("\n");
+
+  throw new Error(
+    [
+      "",
+      "STALE CURRICULUM EXERCISE DETECTED",
+      `Context: ${context}`,
+      "",
+      "Stale DB exercise(s) with learner data:",
+      staleDetails,
+      "",
+      "Current source exercise(s):",
+      sourceDetails,
+      "",
+      "Seed stopped intentionally. No learner progress was deleted.",
+    ].join("\n"),
+  );
 }
 
 async function assertNoProtectedQuestData(tx, questIds, context) {
@@ -97,6 +140,8 @@ async function assertNoProtectedQuestData(tx, questIds, context) {
     },
     select: {
       id: true,
+      slug: true,
+    position: true,
     },
   });
 
@@ -168,10 +213,11 @@ async function syncExercises(tx, questId, exercisesRelation) {
   );
 
   await assertNoProtectedExerciseData(
-    tx,
-    stale.map((exercise) => exercise.id),
-    `quest ${questId}`,
-  );
+  tx,
+  stale,
+  `quest ${questId}`,
+  exercises,
+);
 
   if (stale.length > 0) {
     await tx.exercise.deleteMany({
