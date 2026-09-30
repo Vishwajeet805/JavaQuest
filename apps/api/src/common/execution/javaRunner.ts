@@ -87,6 +87,8 @@ console.log("[java-runner] OnlineCompiler response diagnostics", {
   errorType: typeof result.error,
   errorLength:
     typeof result.error === "string" ? result.error.length : null,
+  errorMessage:
+  typeof result.error === "string" ? result.error : null,
 
   exitCodeType: typeof result.exit_code,
   exitCode: result.exit_code,
