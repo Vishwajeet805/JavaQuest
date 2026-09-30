@@ -661,25 +661,19 @@ async function main() {
   // CURRICULUM
   // --------------------------------------------
 
-  await prisma.$transaction(
-    async (tx) => {
+ 
       await syncModules(
-        tx,
+        prisma,
         course.id,
         javaMasteryModules,
       );
 
       await verifyCurriculum(
-        tx,
+        prisma,
         course.id,
         javaMasteryModules,
       );
-    },
-    {
-      maxWait: 10000,
-      timeout: 120000,
-    },
-  );
+   
 
   console.log(
     "Safely synced Java Foundations curriculum.",
