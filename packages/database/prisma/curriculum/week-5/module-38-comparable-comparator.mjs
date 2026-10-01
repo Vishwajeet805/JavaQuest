@@ -29,7 +29,7 @@ const rows = [
     prompt:
       "Mutable Integer list `120, 50, 80, 30` ko natural ordering se sort karo. Exact output:\nSorted: [30, 50, 80, 120]\nLowest: 30",
     starter:
-      'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<Integer> rewards = new ArrayList<>(List.of(120, 50, 80, 30));\n        // Sort using the elements\\' natural ordering.\n\n        System.out.println("Sorted: " + rewards);\n        System.out.println("Lowest: " + rewards.get(0));\n    }\n}',
+      'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<Integer> rewards = new ArrayList<>(List.of(120, 50, 80, 30));\n        // Sort using the elements\' natural ordering.\n\n        System.out.println("Sorted: " + rewards);\n        System.out.println("Lowest: " + rewards.get(0));\n    }\n}',
     solution:
       'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<Integer> rewards = new ArrayList<>(List.of(120, 50, 80, 30));\n        Collections.sort(rewards);\n\n        System.out.println("Sorted: " + rewards);\n        System.out.println("Lowest: " + rewards.get(0));\n    }\n}',
     tests: tests("Sorted: [30, 50, 80, 120]\nLowest: 30"),
