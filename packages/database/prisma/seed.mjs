@@ -454,21 +454,14 @@ for (const [oldSlug, newSlug] of Object.entries(exerciseSlugMigrations)) {
     );
   }
 
-  if (oldExercise.position !== sourceExercise.position) {
-    throw new Error(
-      [
-        "Refusing ambiguous exercise identity migration:",
-        `${oldSlug} -> ${newSlug}`,
-        `DB position: ${oldExercise.position}`,
-        `Source position: ${sourceExercise.position}`,
-      ].join("\n"),
-    );
-  }
-
+  // This is an explicit identity migration, so the current DB position is
+  // intentionally not used as an identity check. A previously interrupted
+  // seed may have left the row at a temporary parked position. The existing
+  // Exercise row/ID is preserved here; parkPositions() below will safely move
+  // it out of the way and the normal upsert will restore the source position.
   console.log(
-
-    `Migrating exercise identity: ${oldSlug} -> ${newSlug}`,
-
+    `Migrating exercise identity: ${oldSlug} -> ${newSlug} ` +
+      `(DB position ${oldExercise.position} -> source position ${sourceExercise.position})`,
   );
 
 
