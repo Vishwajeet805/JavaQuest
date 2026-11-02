@@ -20,7 +20,7 @@ export const pythonTypeHintsModule = buildPythonModule({
       solution: "def greet(name: str) -> str:\n    return f'Hello, {name}'\n\nprint(greet('Asha'))\nprint(greet.__annotations__['return'].__name__)",
       expected: "Hello, Asha\nstr",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\ndef greet(name: str) -> str:\n    return f'Hello, {name}'\n\nprint(greet('Asha'))\nprint(greet.__annotations__['return'].__name__)\\n~~~",
-      predictionAnswer: "42",
+      predictionAnswer: "Hello, Asha\nstr",
     },
     {
       slug: "union-optional",
@@ -36,7 +36,7 @@ export const pythonTypeHintsModule = buildPythonModule({
       solution: "def display_name(name: str | None) -> str:\n    if name is None:\n        return 'Guest'\n    return name\n\nprint(display_name(None))\nprint(display_name('Mina'))",
       expected: "Guest\nMina",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\ndef display_name(name: str | None) -> str:\n    if name is None:\n        return 'Guest'\n    return name\n\nprint(display_name(None))\nprint(display_name('Mina'))\\n~~~",
-      predictionAnswer: "0\n7",
+      predictionAnswer: "Guest\nMina",
     },
     {
       slug: "generics-protocols",
@@ -52,7 +52,7 @@ export const pythonTypeHintsModule = buildPythonModule({
       solution: "from typing import TypeVar\nT = TypeVar('T')\n\ndef first(items: list[T]) -> T:\n    return items[0]\n\nprint(first([4, 8, 12]))",
       expected: "4",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nfrom typing import TypeVar\nT = TypeVar('T')\n\ndef first(items: list[T]) -> T:\n    return items[0]\n\nprint(first([4, 8, 12]))\\n~~~",
-      predictionAnswer: "9",
+      predictionAnswer: "4",
     }
   ],
 });
