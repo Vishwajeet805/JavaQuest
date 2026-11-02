@@ -20,7 +20,7 @@ export const pythonDateTimeModule = buildPythonModule({
       solution: "from datetime import date\n\nbirthday = date(2000, 5, 17)\nprint(birthday.year)\nprint(birthday.strftime('%d-%m-%Y'))",
       expected: "2000\n17-05-2000",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nfrom datetime import date\n\nbirthday = date(2000, 5, 17)\nprint(birthday.year)\nprint(birthday.strftime('%d-%m-%Y'))\\n~~~",
-      predictionAnswer: "2024\n01-01-2024",
+      predictionAnswer: "2000\n17-05-2000",
     },
     {
       slug: "timedelta-parse",
@@ -52,7 +52,7 @@ export const pythonDateTimeModule = buildPythonModule({
       solution: "from datetime import datetime, timezone\n\ninstant = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)\nprint(instant.isoformat())\nprint(instant.tzinfo is not None)",
       expected: "2026-11-02T12:00:00+00:00\nTrue",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nfrom datetime import datetime, timezone\n\ninstant = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)\nprint(instant.isoformat())\nprint(instant.tzinfo is not None)\\n~~~",
-      predictionAnswer: "2026-01-01T00:00:00+00:00\nTrue",
+      predictionAnswer: "2026-11-02T12:00:00+00:00\nTrue",
     }
   ],
 });
