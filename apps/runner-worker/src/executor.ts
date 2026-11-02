@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 
@@ -83,12 +83,15 @@ export async function execute(
       validatePythonFiles(files);
       for (const file of files) {
         const destination = join(dir, file.path);
-        await mkdir(dirname(destination), { recursive: true });
-        await writeFile(destination, file.content, { encoding: "utf8", flag: "wx" });
+        await mkdir(dirname(destination), { recursive: true, mode: 0o755 });
+        await writeFile(destination, file.content, { encoding: "utf8", flag: "wx", mode: 0o644 });
+        await chmod(dirname(destination), 0o755);
       }
     } else {
       await writeFile(join(dir, "Main.java"), sourceCode, "utf8");
     }
+
+    if (language === "PYTHON") await chmod(dir, 0o755);
 
     const started = Date.now();
     const command = language === "PYTHON"
