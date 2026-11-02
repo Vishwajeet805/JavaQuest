@@ -12,6 +12,13 @@ import { pythonDictionariesModule } from "./week-2/module-10-dictionaries.mjs";
 import { pythonCollectionsPracticeModule } from "./week-2/module-11-collections-practice.mjs";
 import { pythonProblemSolvingModule } from "./week-2/module-12-problem-solving.mjs";
 
+import { pythonFunctionsModule } from "./week-3/module-13-functions.mjs";
+import { pythonFunctionPatternsModule } from "./week-3/module-14-function-patterns.mjs";
+import { pythonScopeRecursionModule } from "./week-3/module-15-scope-recursion.mjs";
+import { pythonFunctionalToolsModule } from "./week-3/module-16-functional-tools.mjs";
+import { pythonModulesImportsModule } from "./week-3/module-17-modules-imports.mjs";
+import { pythonPackagesEnvironmentsModule } from "./week-3/module-18-packages-environments.mjs";
+
 export const pythonCourseModules = [
   pythonFirstProgramModule,
   pythonVariablesModule,
@@ -25,4 +32,10 @@ export const pythonCourseModules = [
   pythonDictionariesModule,
   pythonCollectionsPracticeModule,
   pythonProblemSolvingModule,
+  pythonFunctionsModule,
+  pythonFunctionPatternsModule,
+  pythonScopeRecursionModule,
+  pythonFunctionalToolsModule,
+  pythonModulesImportsModule,
+  pythonPackagesEnvironmentsModule,
 ];
