@@ -619,10 +619,12 @@ This separation allows curriculum content to evolve without coupling it directly
 - PostgreSQL 17
 - Prisma ORM
 
-## Java Execution
+## Code Execution
 
-- Java 21 isolated runner
-- controlled compilation and execution
+- Java 21 isolated runner with JDK compilation and execution
+- Python 3.12 isolated interpreter runner; no online compiler API required
+- language-aware submission routing and shared test-case evaluation
+- bounded, network-disabled Docker execution with non-root Python containers
 - evaluator-driven CODE exercise completion
 
 ## Testing
@@ -753,7 +755,7 @@ The curriculum seeder is designed around stable slugs and upsert-based synchroni
 
 ---
 
-## 8. Build the Java Runner
+## 8. Build the Language Runners
 
 When working with CODE exercises:
 
@@ -761,7 +763,7 @@ When working with CODE exercises:
 pnpm runner:build
 ```
 
-This builds the local isolated Java runner image.
+This builds both local images: `javaquets-java-runner:local` and `javaquets-python-runner:local`. The runner worker must have access to the Docker daemon that owns these images. Configure the API with `RUNNER_SERVICE_URL` and a strong `RUNNER_SERVICE_TOKEN` when Python course execution is enabled. Keep the worker private; access to its Docker daemon is highly privileged.
 
 ---
 
@@ -831,7 +833,7 @@ pnpm build
 | `pnpm db:push` | Push Prisma schema |
 | `pnpm db:migrate:deploy` | Apply database migrations |
 | `pnpm db:seed` | Synchronize seeded curriculum |
-| `pnpm runner:build` | Build isolated Java runner |
+| `pnpm runner:build` | Build isolated Java and Python runner images |
 
 ---
 
