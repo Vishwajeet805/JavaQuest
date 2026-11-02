@@ -20,7 +20,7 @@ export const pythonLoggingModule = buildPythonModule({
       solution: "import logging\n\nlogging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s', force=True)\nlogging.info('Service ready')\nlogging.warning('Cache is stale')",
       expected: "INFO:Service ready\nWARNING:Cache is stale",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport logging\n\nlogging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s', force=True)\nlogging.info('Service ready')\nlogging.warning('Cache is stale')\\n~~~",
-      predictionAnswer: "INFO:Started\nWARNING:Retrying",
+      predictionAnswer: "INFO:Service ready\nWARNING:Cache is stale",
     },
     {
       slug: "logger-config",
@@ -36,7 +36,7 @@ export const pythonLoggingModule = buildPythonModule({
       solution: "import logging\nfrom io import StringIO\n\nstream = StringIO()\nlogger = logging.getLogger('demo_logger')\nlogger.handlers.clear()\nlogger.setLevel(logging.INFO)\nhandler = logging.StreamHandler(stream)\nhandler.setFormatter(logging.Formatter('%(levelname)s:%(message)s'))\nlogger.addHandler(handler)\nlogger.info('Saved')\nprint(stream.getvalue().strip())",
       expected: "INFO:Saved",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport logging\nfrom io import StringIO\n\nstream = StringIO()\nlogger = logging.getLogger('demo_logger')\nlogger.handlers.clear()\nlogger.setLevel(logging.INFO)\nhandler = logging.StreamHandler(stream)\nhandler.setFormatter(logging.Formatter('%(levelname)s:%(message)s'))\nlogger.addHandler(handler)\nlogger.info('Saved')\nprint(stream.getvalue().strip())\\n~~~",
-      predictionAnswer: "INFO:Task complete",
+      predictionAnswer: "INFO:Saved",
     },
     {
       slug: "exception-logging",
@@ -52,7 +52,7 @@ export const pythonLoggingModule = buildPythonModule({
       solution: "import logging\nfrom io import StringIO\n\nstream = StringIO()\nlogger = logging.getLogger('error_demo')\nlogger.handlers.clear()\nlogger.propagate = False\nlogger.setLevel(logging.ERROR)\nlogger.addHandler(logging.StreamHandler(stream))\ntry:\n    int('oops')\nexcept ValueError:\n    logger.error('Invalid input received')\nprint(stream.getvalue().strip())",
       expected: "Invalid input received",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport logging\nfrom io import StringIO\n\nstream = StringIO()\nlogger = logging.getLogger('error_demo')\nlogger.handlers.clear()\nlogger.propagate = False\nlogger.setLevel(logging.ERROR)\nlogger.addHandler(logging.StreamHandler(stream))\ntry:\n    int('oops')\nexcept ValueError:\n    logger.error('Invalid input received')\nprint(stream.getvalue().strip())\\n~~~",
-      predictionAnswer: "Bad value",
+      predictionAnswer: "Invalid input received",
     }
   ],
 });
