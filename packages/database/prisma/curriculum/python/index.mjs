@@ -26,6 +26,13 @@ import { pythonInheritanceModule } from "./week-4/module-22-inheritance.mjs";
 import { pythonPolymorphismCompositionModule } from "./week-4/module-23-polymorphism-composition.mjs";
 import { pythonDunderDataclassesModule } from "./week-4/module-24-dunder-dataclasses.mjs";
 
+import { pythonFileHandlingModule } from "./week-5/module-25-file-handling.mjs";
+import { pythonExceptionsModule } from "./week-5/module-26-exceptions.mjs";
+import { pythonJsonModule } from "./week-5/module-27-json.mjs";
+import { pythonCsvModule } from "./week-5/module-28-csv.mjs";
+import { pythonIteratorsModule } from "./week-5/module-29-iterators.mjs";
+import { pythonGeneratorsModule } from "./week-5/module-30-generators.mjs";
+
 export const pythonCourseModules = [
   pythonFirstProgramModule,
   pythonVariablesModule,
@@ -51,4 +58,10 @@ export const pythonCourseModules = [
   pythonInheritanceModule,
   pythonPolymorphismCompositionModule,
   pythonDunderDataclassesModule,
+  pythonFileHandlingModule,
+  pythonExceptionsModule,
+  pythonJsonModule,
+  pythonCsvModule,
+  pythonIteratorsModule,
+  pythonGeneratorsModule,
 ];
