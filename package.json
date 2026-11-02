@@ -13,7 +13,7 @@
     "db:push": "dotenv -e .env -- pnpm --filter @javaquets/database db:push",
     "db:migrate:deploy": "pnpm --filter @javaquets/database db:migrate:deploy",
     "db:seed": "dotenv -e .env -- pnpm --filter @javaquets/database db:seed",
-    "runner:build": "docker build -t javaquets-java-runner:local infra/runner"
+    "runner:build": "docker build -t javaquets-java-runner:local infra/runner && docker build -t javaquets-python-runner:local -f infra/runner/python/Dockerfile ."
   },
   "devDependencies": {
     "eslint": "^9.13.0",
