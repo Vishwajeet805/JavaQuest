@@ -24,7 +24,7 @@ PY
 chmod 755 "$WORKSPACE"
 chmod 644 "$WORKSPACE"/*.py
 
-ACTUAL="$(printf 'JavaQuets\n' | docker run --rm --network none \
+ACTUAL="$(printf 'JavaQuets\n' | docker run --rm -i --network none \
   --memory 128m --memory-swap 128m --cpus 0.5 --pids-limit 32 \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m,uid=10001,gid=10001 \
   --security-opt no-new-privileges --cap-drop ALL --user 10001:10001 \
