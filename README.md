@@ -107,11 +107,11 @@ Topics are broken into small focused quests containing combinations of:
 
 ---
 
-### 💻 Real Java Execution
+### 💻 Isolated Java & Python Execution
 
 Coding exercises are not simple text comparisons.
 
-Learner Java submissions are sent through the submissions system and evaluated using an isolated Java runner.
+Learner submissions are routed by course language and evaluated in isolated language-specific environments. Java uses the existing JDK runner; Python uses a dedicated Python 3.12 interpreter image. Neither Python execution nor its test evaluation depends on an online compiler API.
 
 ```text
 Browser
