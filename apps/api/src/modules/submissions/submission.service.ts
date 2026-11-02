@@ -19,7 +19,7 @@ export async function submitCode(userId: string, questSlug: string, exerciseSlug
   
   if (!enrollment) throw new AppError("COURSE_ENROLLMENT_REQUIRED", "Enroll in the course before submitting code", 409);
   
-  const submission = await prisma.submission.create({ data: { userId, exerciseId: exercise.id, sourceCode, status: "PENDING" } });
+  const submission = await prisma.submission.create({ data: { userId, exerciseId: exercise.id, sourceCode: files?.length ? JSON.stringify({ main: sourceCode, files }) : sourceCode, status: "PENDING" } });
   const testResults: SubmissionResultDto["tests"] = [];
   let totalRuntime = 0;
   let status: "PASSED" | "FAILED" | "ERROR" = "PASSED";
