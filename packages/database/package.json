@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "curriculum:validate": "node prisma/curriculum/validate-curriculum.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0"
