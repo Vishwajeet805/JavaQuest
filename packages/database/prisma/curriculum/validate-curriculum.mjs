@@ -48,6 +48,6 @@ function validateCurriculum(modules, expectedCount, label) {
 }
 
 const java = validateCurriculum(javaMasteryModules, 48, "Java");
-const python = validateCurriculum(pythonCourseModules, 36, "Python");
+const python = validateCurriculum(pythonCourseModules, 42, "Python");
 console.log(JSON.stringify({ java, python }, null, 2));
 console.log("Curriculum validation passed.");
