@@ -8,7 +8,7 @@ RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin runner \
     && mkdir -p /workspace \
     && chown runner:runner /workspace
 
-RUN python3 -I -B -c "print(\u0027python-runner-ready\u0027)"
+RUN python3 -I -B -c 'print("python-runner-ready")'
 
 USER 10001:10001
 WORKDIR /workspace
