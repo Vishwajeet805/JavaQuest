@@ -2,6 +2,7 @@ import { prisma } from "@javaquets/database";
 import type { SubmissionResultDto } from "@javaquets/shared";
 import { AppError, NotFoundError } from "../../common/errors/AppError.js";
 import { runJavaSource } from "../../common/execution/javaRunner.js";
+import { runPythonSource } from "../../common/execution/pythonRunner.js";
 import { completeExercise } from "../progress/progress.service.js";
 
 function normalize(value: string) { return value.replace(/\r\n/g, "\n").trimEnd(); }
@@ -12,7 +13,7 @@ export async function submitCode(userId: string, questSlug: string, exerciseSlug
     include: { testCases: { orderBy: { position: "asc" } }, quest: { include: { module: { include: { course: true } } } } },
   });
   if (!exercise) throw new NotFoundError("EXERCISE_NOT_FOUND", "Exercise not found");
-  if (exercise.kind !== "CODE") throw new AppError("CODE_SUBMISSION_NOT_SUPPORTED", "This exercise does not accept Java source submissions", 409);
+  if (exercise.kind !== "CODE") throw new AppError("CODE_SUBMISSION_NOT_SUPPORTED", "This exercise does not accept code submissions", 409);
   
   const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exercise.quest.module.course.id } } });
   
@@ -26,7 +27,12 @@ export async function submitCode(userId: string, questSlug: string, exerciseSlug
 
   for (const test of exercise.testCases) {
     let result;
-    try { result = await runJavaSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs); }
+    try {
+      const language = exercise.quest.module.course.language;
+      result = language === "PYTHON"
+        ? await runPythonSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs)
+        : await runJavaSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs);
+    }
     catch (error) {
       status = "ERROR";
       errorText = error instanceof Error ? `Runner unavailable: ${error.message}` : "Runner unavailable";
