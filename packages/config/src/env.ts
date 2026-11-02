@@ -68,6 +68,7 @@ const envSchema = z
       .max(1048576)
       .default(65536),
     JAVA_RUNNER_IMAGE: z.string().min(1).default("javaquets-java-runner:local"),
+    PYTHON_RUNNER_IMAGE: z.string().min(1).default("javaquets-python-runner:local"),
     RUNNER_SERVICE_URL: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.string().url().optional(),

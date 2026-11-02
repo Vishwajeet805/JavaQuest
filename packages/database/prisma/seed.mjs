@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 
 
-import { javaMasteryModules } from "./curriculum/index.mjs";
+import { javaMasteryModules, pythonCourseModules } from "./curriculum/index.mjs";
 
 
 
@@ -1399,6 +1399,7 @@ async function main() {
       status: "PUBLISHED",
 
       difficulty: "BEGINNER",
+      language: "JAVA",
 
     },
 
@@ -1460,11 +1461,30 @@ async function main() {
 
 
 
-  console.log(
+  console.log("Safely synced Java Foundations curriculum.");
 
-    "Safely synced Java Foundations curriculum.",
+  const pythonCourse = await prisma.course.upsert({
+    where: { slug: "python-foundations" },
+    update: {
+      title: "Python Foundations",
+      description: "Python 3.12 ka practical Hinglish learning path — fundamentals se real-world projects tak.",
+      status: "PUBLISHED",
+      difficulty: "BEGINNER",
+      language: "PYTHON",
+    },
+    create: {
+      slug: "python-foundations",
+      title: "Python Foundations",
+      description: "Python 3.12 ka practical Hinglish learning path — fundamentals se real-world projects tak.",
+      status: "PUBLISHED",
+      difficulty: "BEGINNER",
+      language: "PYTHON",
+    },
+  });
 
-  );
+  await syncModules(prisma, pythonCourse.id, pythonCourseModules);
+  await verifyCurriculum(prisma, pythonCourse.id, pythonCourseModules);
+  console.log("Safely synced Python Foundations curriculum.");
 
 }
 

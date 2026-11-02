@@ -27,6 +27,7 @@ export async function getPublishedQuest(slug: string): Promise<QuestDetail> {
       slug: quest.module.slug,
       title: quest.module.title,
       courseSlug: quest.module.course.slug,
+      language: quest.module.course.language,
     },
     lessons: quest.lessons.map((lesson) => ({
       slug: lesson.slug,

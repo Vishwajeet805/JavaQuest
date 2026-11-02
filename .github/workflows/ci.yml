@@ -55,11 +55,17 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @javaquets/database db:generate
 
+      - name: Validate Java and Python curriculum sources
+        run: pnpm --filter @javaquets/database curriculum:validate
+
       - name: Apply test database schema
         run: pnpm --filter @javaquets/database db:push
 
-      - name: Build isolated Java runner
+      - name: Build isolated Java and Python runners
         run: pnpm runner:build
+
+      - name: Smoke-test Python classes and local modules
+        run: pnpm runner:smoke
 
       - name: Lint
         run: pnpm lint

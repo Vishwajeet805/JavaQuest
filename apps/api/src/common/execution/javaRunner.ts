@@ -149,7 +149,7 @@ async function runRemotely(
           "content-type": "application/json",
           "x-request-id": randomUUID(),
         },
-        body: JSON.stringify({ sourceCode, stdin, timeoutMs }),
+        body: JSON.stringify({ language: "JAVA", sourceCode, stdin, timeoutMs }),
         signal: controller.signal,
       },
     );

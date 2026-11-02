@@ -2,23 +2,24 @@ import { prisma } from "@javaquets/database";
 import type { SubmissionResultDto } from "@javaquets/shared";
 import { AppError, NotFoundError } from "../../common/errors/AppError.js";
 import { runJavaSource } from "../../common/execution/javaRunner.js";
+import { runPythonSource } from "../../common/execution/pythonRunner.js";
 import { completeExercise } from "../progress/progress.service.js";
 
 function normalize(value: string) { return value.replace(/\r\n/g, "\n").trimEnd(); }
 
-export async function submitCode(userId: string, questSlug: string, exerciseSlug: string, sourceCode: string): Promise<SubmissionResultDto> {
+export async function submitCode(userId: string, questSlug: string, exerciseSlug: string, sourceCode: string, files?: { path: string; content: string }[]): Promise<SubmissionResultDto> {
   const exercise = await prisma.exercise.findFirst({
     where: { slug: exerciseSlug, quest: { slug: questSlug, status: "PUBLISHED", module: { course: { status: "PUBLISHED" } } } },
     include: { testCases: { orderBy: { position: "asc" } }, quest: { include: { module: { include: { course: true } } } } },
   });
   if (!exercise) throw new NotFoundError("EXERCISE_NOT_FOUND", "Exercise not found");
-  if (exercise.kind !== "CODE") throw new AppError("CODE_SUBMISSION_NOT_SUPPORTED", "This exercise does not accept Java source submissions", 409);
+  if (exercise.kind !== "CODE") throw new AppError("CODE_SUBMISSION_NOT_SUPPORTED", "This exercise does not accept code submissions", 409);
   
   const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exercise.quest.module.course.id } } });
   
   if (!enrollment) throw new AppError("COURSE_ENROLLMENT_REQUIRED", "Enroll in the course before submitting code", 409);
   
-  const submission = await prisma.submission.create({ data: { userId, exerciseId: exercise.id, sourceCode, status: "PENDING" } });
+  const submission = await prisma.submission.create({ data: { userId, exerciseId: exercise.id, sourceCode: files?.length ? JSON.stringify({ main: sourceCode, files }) : sourceCode, status: "PENDING" } });
   const testResults: SubmissionResultDto["tests"] = [];
   let totalRuntime = 0;
   let status: "PASSED" | "FAILED" | "ERROR" = "PASSED";
@@ -26,7 +27,12 @@ export async function submitCode(userId: string, questSlug: string, exerciseSlug
 
   for (const test of exercise.testCases) {
     let result;
-    try { result = await runJavaSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs); }
+    try {
+      const language = exercise.quest.module.course.language;
+      result = language === "PYTHON"
+        ? await runPythonSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs, files)
+        : await runJavaSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs);
+    }
     catch (error) {
       status = "ERROR";
       errorText = error instanceof Error ? `Runner unavailable: ${error.message}` : "Runner unavailable";

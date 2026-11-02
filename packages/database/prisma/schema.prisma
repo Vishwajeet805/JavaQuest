@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ProgrammingLanguage {
+  JAVA
+  PYTHON
+}
+
 enum CourseStatus {
   DRAFT
   PUBLISHED
@@ -148,6 +153,7 @@ model Course {
   description String
   status      CourseStatus @default(DRAFT)
   difficulty  Difficulty   @default(BEGINNER)
+  language    ProgrammingLanguage @default(JAVA)
   version     Int          @default(1)
   publishedAt DateTime?
   updatedById String?

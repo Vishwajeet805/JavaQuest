@@ -21,7 +21,7 @@ import {
   startQuest,
 } from "@/services/learner";
 
-import { submitJava } from "@/services/submissions";
+import { submitCode } from "@/services/submissions";
 
 export function QuestWorkspace({
   quest,
@@ -55,6 +55,7 @@ export function QuestWorkspace({
   const [progress, setProgress] = useState<QuestProgressDto | null>(null);
 
   const [code, setCode] = useState(quest.exercises[0]?.starterCode ?? "");
+  const [pythonFiles, setPythonFiles] = useState<{ path: string; content: string }[]>([]);
 
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<SubmissionResultDto | null>(null);
@@ -95,6 +96,7 @@ export function QuestWorkspace({
   useEffect(() => {
     if (current?.type === "exercise") {
       setCode(drafts.current[current.slug] ?? current.starterCode ?? "");
+      setPythonFiles([]);
     }
 
     setAnswer("");
@@ -115,7 +117,7 @@ export function QuestWorkspace({
 
     try {
       if (exercise.kind === "CODE") {
-        const submission = await submitJava(quest.slug, exercise.slug, code);
+        const submission = await submitCode(quest.slug, exercise.slug, code, quest.module.language === "PYTHON" ? pythonFiles : undefined);
 
         setResult(submission);
 
@@ -368,6 +370,7 @@ export function QuestWorkspace({
               title={current.title}
               kind={current.kind}
               content={current.content}
+              language={quest.module.language}
               currentIndex={index}
               totalItems={items.length}
               onNext={goNext}
@@ -375,7 +378,10 @@ export function QuestWorkspace({
           ) : current?.type === "exercise" ? (
             <Exercise
               exercise={current}
+              language={quest.module.language}
               code={code}
+              pythonFiles={pythonFiles}
+              setPythonFiles={setPythonFiles}
               setCode={(value) => {
                 setCode(value);
                 drafts.current[current.slug] = value;
@@ -409,6 +415,7 @@ function Lesson({
   title,
   kind,
   content,
+  language,
   currentIndex,
   totalItems,
   onNext,
@@ -416,6 +423,7 @@ function Lesson({
   title: string;
   kind: string;
   content: string;
+  language: QuestDetail["module"]["language"];
   currentIndex: number;
   totalItems: number;
   onNext: () => void;
@@ -438,7 +446,7 @@ function Lesson({
 
       <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="mx-auto max-w-4xl">
-          <LessonContent content={content} />
+          <LessonContent content={content} language={language} />
         </div>
 
         <div className="mx-auto mt-6 flex max-w-4xl justify-end border-t border-slate-800 pt-6">
@@ -462,7 +470,10 @@ function Lesson({
 
 function Exercise({
   exercise,
+  language,
   code,
+  pythonFiles,
+  setPythonFiles,
   setCode,
   answer,
   setAnswer,
@@ -475,7 +486,10 @@ function Exercise({
   onNext,
 }: {
   exercise: ExerciseDto;
+  language: QuestDetail["module"]["language"];
   code: string;
+  pythonFiles: { path: string; content: string }[];
+  setPythonFiles: (files: { path: string; content: string }[]) => void;
   setCode: (value: string) => void;
   answer: string;
   setAnswer: (value: string) => void;
@@ -491,6 +505,13 @@ function Exercise({
   const isCode = exercise.kind === "CODE";
   const isPrediction = exercise.kind === "OUTPUT_PREDICTION";
   const isMultipleChoice = exercise.kind === "MULTIPLE_CHOICE";
+  const [newFileName, setNewFileName] = useState("");
+  const addPythonFile = () => {
+    const name = newFileName.trim();
+    if (!/^[a-zA-Z0-9_][a-zA-Z0-9_-]*\.py$/.test(name) || name === "main.py" || pythonFiles.some((file) => file.path === name) || pythonFiles.length >= 19) return;
+    setPythonFiles([...pythonFiles, { path: name, content: "# Add your Python code here\n" }]);
+    setNewFileName("");
+  };
 
   return (
     <div className="space-y-4">
@@ -548,18 +569,18 @@ function Exercise({
               </div>
 
               <span className="border-l border-slate-700 pl-3 text-xs font-bold text-slate-300">
-                Main.java
+                {language === "PYTHON" ? "main.py" : "Main.java"}
               </span>
             </div>
 
             <span className="rounded-md bg-slate-950 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Java 21
+              {language === "PYTHON" ? "Python 3.12" : "Java 21"}
             </span>
           </div>
 
           <textarea
             id="code-editor"
-            aria-label="Java source code"
+            aria-label={`${language === "PYTHON" ? "Python" : "Java"} source code`}
             disabled={busy}
             autoCapitalize="off"
             autoCorrect="off"
@@ -569,6 +590,25 @@ function Exercise({
             onChange={(e) => setCode(e.target.value)}
             className="min-h-[320px] sm:min-h-[390px] w-full resize-y bg-transparent p-5 font-mono text-sm leading-7 text-slate-100 outline-none sm:p-6"
           />
+
+          {language === "PYTHON" && (
+            <div className="space-y-3 border-t border-slate-800 px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-300">Additional Python modules</span>
+                <input aria-label="New Python filename" value={newFileName} onChange={(event) => setNewFileName(event.target.value)} placeholder="helpers.py" disabled={busy || pythonFiles.length >= 19} className="min-h-9 w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-amber-400" />
+                <button type="button" onClick={addPythonFile} disabled={busy || !newFileName.trim() || pythonFiles.length >= 19} className="btn-secondary min-h-9">Add file</button>
+              </div>
+              {pythonFiles.map((file) => (
+                <div key={file.path} className="overflow-hidden rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between bg-slate-900 px-3 py-2">
+                    <span className="text-xs font-bold text-slate-300">{file.path}</span>
+                    <button type="button" disabled={busy} onClick={() => setPythonFiles(pythonFiles.filter((item) => item.path !== file.path))} className="text-xs font-semibold text-red-300">Remove</button>
+                  </div>
+                  <textarea aria-label={file.path} disabled={busy} spellCheck={false} value={file.content} onChange={(event) => setPythonFiles(pythonFiles.map((item) => item.path === file.path ? { ...item, content: event.target.value } : item))} className="min-h-40 w-full resize-y bg-transparent p-4 font-mono text-sm leading-6 text-slate-100 outline-none" />
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-900 px-5 py-4">
             <p className="text-xs text-slate-400">
@@ -706,7 +746,7 @@ export function NonCodeAnswer({
             <p className="text-sm font-bold text-slate-200">{label}</p>
 
             <p className="mt-1 text-xs text-slate-400">
-              Enter your answer exactly as Java would produce it.
+              Enter the answer exactly as the program would produce it.
             </p>
           </div>
 

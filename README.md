@@ -107,11 +107,11 @@ Topics are broken into small focused quests containing combinations of:
 
 ---
 
-### 💻 Real Java Execution
+### 💻 Isolated Java & Python Execution
 
 Coding exercises are not simple text comparisons.
 
-Learner Java submissions are sent through the submissions system and evaluated using an isolated Java runner.
+Learner submissions are routed by course language and evaluated in isolated language-specific environments. Java uses the existing JDK runner; Python uses a dedicated Python 3.12 interpreter image. Neither Python execution nor its test evaluation depends on an online compiler API.
 
 ```text
 Browser
@@ -518,10 +518,16 @@ JavaQuets uses a monorepo architecture.
       └─────────────────┘       └────────┬────────┘
                                         │
                                         ▼
-                               ┌─────────────────┐
-                               │ Isolated Java   │
-                               │ Runner          │
-                               └─────────────────┘
+                               ┌────────────────────────┐
+                               │ Language-aware Worker  │
+                               └───────────┬────────────┘
+                                           │
+                         ┌─────────────────┴─────────────────┐
+                         ▼                                   ▼
+                ┌─────────────────┐                 ┌─────────────────┐
+                │ Java 21 / JDK   │                 │ Python 3.12     │
+                │ Container       │                 │ Container       │
+                └─────────────────┘                 └─────────────────┘
 ```
 
 ---
@@ -544,7 +550,7 @@ JavaQuest/
 │
 ├── infra/
 │   ├── docker/              # Local infrastructure
-│   └── runner/              # Isolated Java runner
+│   └── runner/              # Isolated Java and Python runners
 │
 ├── docs/                    # Architecture / production documentation
 │
@@ -619,10 +625,12 @@ This separation allows curriculum content to evolve without coupling it directly
 - PostgreSQL 17
 - Prisma ORM
 
-## Java Execution
+## Code Execution
 
-- Java 21 isolated runner
-- controlled compilation and execution
+- Java 21 isolated runner with JDK compilation and execution
+- Python 3.12 isolated interpreter runner; no online compiler API required
+- language-aware submission routing and shared test-case evaluation
+- bounded, network-disabled Docker execution with non-root Python containers
 - evaluator-driven CODE exercise completion
 
 ## Testing
@@ -753,7 +761,7 @@ The curriculum seeder is designed around stable slugs and upsert-based synchroni
 
 ---
 
-## 8. Build the Java Runner
+## 8. Build the Language Runners
 
 When working with CODE exercises:
 
@@ -761,7 +769,7 @@ When working with CODE exercises:
 pnpm runner:build
 ```
 
-This builds the local isolated Java runner image.
+This builds both local images: `javaquets-java-runner:local` and `javaquets-python-runner:local`. The runner worker must have access to the Docker daemon that owns these images. Configure the API with `RUNNER_SERVICE_URL` and a strong `RUNNER_SERVICE_TOKEN` when Python course execution is enabled. Keep the worker private; access to its Docker daemon is highly privileged. Run `pnpm runner:smoke` to verify Python class execution and local module imports.
 
 ---
 
@@ -831,7 +839,8 @@ pnpm build
 | `pnpm db:push` | Push Prisma schema |
 | `pnpm db:migrate:deploy` | Apply database migrations |
 | `pnpm db:seed` | Synchronize seeded curriculum |
-| `pnpm runner:build` | Build isolated Java runner |
+| `pnpm runner:build` | Build isolated Java and Python runner images |
+| `pnpm runner:smoke` | Smoke-test Python classes and module imports |
 
 ---
 
