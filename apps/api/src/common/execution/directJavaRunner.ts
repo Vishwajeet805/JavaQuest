@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { env } from "@javaquets/config";
 import { AppError } from "../errors/AppError.js";
 import { increment, observe } from "../observability/metrics.js";
@@ -11,7 +11,14 @@ import type { JavaRunResult } from "./javaRunner.js";
 // its filesystem/network. Never pass API secrets into the child environment.
 // Linux process groups stop ordinary descendants, not deliberately escaped ones.
 const childEnv = (cwd: string) => ({
-  PATH: process.env.PATH,
+  // setup-java exposes JAVA_HOME consistently; explicitly prepend its bin directory
+  // so worker processes and test runners do not depend on inherited PATH mutation.
+  PATH: [
+    process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin") : undefined,
+    process.env.PATH,
+  ]
+    .filter((entry): entry is string => Boolean(entry))
+    .join(delimiter),
   JAVA_HOME: process.env.JAVA_HOME,
   LANG: "C.UTF-8",
   TMPDIR: cwd,
