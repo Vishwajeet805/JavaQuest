@@ -95,7 +95,7 @@ export async function execute(
 
     const started = Date.now();
     const command = language === "PYTHON"
-      ? ["python3", "-I", "-B", "/workspace/main.py"]
+      ? ["python3", "-I", "-B", "-c", "import runpy, sys; sys.path.insert(0, \"/workspace\"); runpy.run_path(\"/workspace/main.py\", run_name=\"__main__\")"]
       : ["sh", "-lc", `javac Main.java && timeout ${Math.max(1, Math.ceil(timeoutMs / 1000))}s java -Xmx64m Main`];
     return await new Promise((resolve, reject) => {
       const child = spawn("docker", [
@@ -106,12 +106,15 @@ export async function execute(
         "--user", "10001:10001", "-v", `${dir}:/workspace:ro`, "-w", "/workspace",
         images[language], ...command,
       ], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
-      let stdout = "", stderr = "", timedOut = false, outputLimitExceeded = false, settled = false;
+      let stdout = "", stderr = "", outputBytes = 0, timedOut = false, outputLimitExceeded = false, settled = false;
       const kill = () => { void cleanupContainer(name); child.kill("SIGKILL"); };
       const timer = setTimeout(() => { timedOut = true; kill(); }, timeoutMs + 5000);
       const append = (target: "out" | "err", chunk: Buffer) => {
-        if (target === "out") stdout += chunk.toString(); else stderr += chunk.toString();
-        if (Buffer.byteLength(stdout) + Buffer.byteLength(stderr) > maxOutput) { outputLimitExceeded = true; kill(); }
+        const remaining = Math.max(0, maxOutput - outputBytes);
+        const retained = chunk.subarray(0, remaining);
+        outputBytes += retained.length;
+        if (target === "out") stdout += retained.toString(); else stderr += retained.toString();
+        if (chunk.length > remaining) { outputLimitExceeded = true; kill(); }
       };
       child.stdout.on("data", (chunk: Buffer) => append("out", chunk));
       child.stderr.on("data", (chunk: Buffer) => append("err", chunk));
