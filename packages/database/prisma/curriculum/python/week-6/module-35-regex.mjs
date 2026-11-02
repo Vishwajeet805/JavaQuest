@@ -20,7 +20,7 @@ export const pythonRegexModule = buildPythonModule({
       solution: "import re\ntext = 'Order 482 ships on 2026-11-02'\nmatch = re.search(r'\\d{3}', text)\nprint(match.group())",
       expected: "482",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport re\ntext = 'Order 482 ships on 2026-11-02'\nmatch = re.search(r'\\d{3}', text)\nprint(match.group())\\n~~~",
-      predictionAnswer: "2026",
+      predictionAnswer: "482",
     },
     {
       slug: "groups-anchors",
@@ -36,7 +36,7 @@ export const pythonRegexModule = buildPythonModule({
       solution: "import re\npattern = re.compile(r'([A-Z]{2})-(\\d{4})')\nmatch = pattern.fullmatch('AB-2048')\nprint(match.group(1))\nprint(match.group(2))",
       expected: "AB\n2048",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport re\npattern = re.compile(r'([A-Z]{2})-(\\d{4})')\nmatch = pattern.fullmatch('AB-2048')\nprint(match.group(1))\nprint(match.group(2))\\n~~~",
-      predictionAnswer: "IN\n1234",
+      predictionAnswer: "AB\n2048",
     },
     {
       slug: "sub-split",
@@ -52,7 +52,7 @@ export const pythonRegexModule = buildPythonModule({
       solution: "import re\ntext = 'one   two\\tthree'\nclean = re.sub(r'\\s+', ' ', text).strip()\nprint(clean)\nprint(re.split(r'\\s+', clean))",
       expected: "one two three\n['one', 'two', 'three']",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nimport re\ntext = 'one   two\\tthree'\nclean = re.sub(r'\\s+', ' ', text).strip()\nprint(clean)\nprint(re.split(r'\\s+', clean))\\n~~~",
-      predictionAnswer: "a b\n['a', 'b']",
+      predictionAnswer: "one two three\n['one', 'two', 'three']",
     }
   ],
 });
