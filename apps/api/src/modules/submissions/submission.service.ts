@@ -7,7 +7,7 @@ import { completeExercise } from "../progress/progress.service.js";
 
 function normalize(value: string) { return value.replace(/\r\n/g, "\n").trimEnd(); }
 
-export async function submitCode(userId: string, questSlug: string, exerciseSlug: string, sourceCode: string): Promise<SubmissionResultDto> {
+export async function submitCode(userId: string, questSlug: string, exerciseSlug: string, sourceCode: string, files?: { path: string; content: string }[]): Promise<SubmissionResultDto> {
   const exercise = await prisma.exercise.findFirst({
     where: { slug: exerciseSlug, quest: { slug: questSlug, status: "PUBLISHED", module: { course: { status: "PUBLISHED" } } } },
     include: { testCases: { orderBy: { position: "asc" } }, quest: { include: { module: { include: { course: true } } } } },
@@ -30,7 +30,7 @@ export async function submitCode(userId: string, questSlug: string, exerciseSlug
     try {
       const language = exercise.quest.module.course.language;
       result = language === "PYTHON"
-        ? await runPythonSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs)
+        ? await runPythonSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs, files)
         : await runJavaSource(sourceCode, test.input ?? "", exercise.executionTimeoutMs);
     }
     catch (error) {
