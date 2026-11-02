@@ -52,7 +52,7 @@ export const pythonTestingModule = buildPythonModule({
       solution: "from unittest.mock import Mock\n\nmailer = Mock()\nmailer.send('hello')\nprint(mailer.send.call_count)\nprint(mailer.send.call_args.args[0])",
       expected: "1\nhello",
       predictionPrompt: "Is example ka exact output predict karo:\\n~~~python\\nfrom unittest.mock import Mock\n\nmailer = Mock()\nmailer.send('hello')\nprint(mailer.send.call_count)\nprint(mailer.send.call_args.args[0])\\n~~~",
-      predictionAnswer: "1\nrecord",
+      predictionAnswer: "1\nhello",
     }
   ],
 });
