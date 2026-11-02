@@ -1399,6 +1399,7 @@ async function main() {
       status: "PUBLISHED",
 
       difficulty: "BEGINNER",
+      language: "JAVA",
 
     },
 
