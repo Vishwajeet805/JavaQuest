@@ -380,6 +380,8 @@ export function QuestWorkspace({
               exercise={current}
               language={quest.module.language}
               code={code}
+              pythonFiles={pythonFiles}
+              setPythonFiles={setPythonFiles}
               setCode={(value) => {
                 setCode(value);
                 drafts.current[current.slug] = value;
@@ -470,6 +472,8 @@ function Exercise({
   exercise,
   language,
   code,
+  pythonFiles,
+  setPythonFiles,
   setCode,
   answer,
   setAnswer,
@@ -484,6 +488,8 @@ function Exercise({
   exercise: ExerciseDto;
   language: QuestDetail["module"]["language"];
   code: string;
+  pythonFiles: { path: string; content: string }[];
+  setPythonFiles: (files: { path: string; content: string }[]) => void;
   setCode: (value: string) => void;
   answer: string;
   setAnswer: (value: string) => void;
@@ -498,7 +504,14 @@ function Exercise({
   const passed = result?.status === "PASSED";
   const isCode = exercise.kind === "CODE";
   const isPrediction = exercise.kind === "OUTPUT_PREDICTION";
-  const isMultipleChoice = exercise.kind === "MULTIPLE_CHOICE";\n  const [newFileName, setNewFileName] = useState("");\n  const addPythonFile = () => {\n    const name = newFileName.trim();\n    if (!/^[a-zA-Z0-9_][a-zA-Z0-9_-]*\\.py$/.test(name) || name === "main.py" || pythonFiles.some((file) => file.path === name) || pythonFiles.length >= 19) return;\n    setPythonFiles([...pythonFiles, { path: name, content: "# Add your Python code here\\n" }]);\n    setNewFileName("");\n  };
+  const isMultipleChoice = exercise.kind === "MULTIPLE_CHOICE";
+  const [newFileName, setNewFileName] = useState("");
+  const addPythonFile = () => {
+    const name = newFileName.trim();
+    if (!/^[a-zA-Z0-9_][a-zA-Z0-9_-]*\.py$/.test(name) || name === "main.py" || pythonFiles.some((file) => file.path === name) || pythonFiles.length >= 19) return;
+    setPythonFiles([...pythonFiles, { path: name, content: "# Add your Python code here\n" }]);
+    setNewFileName("");
+  };
 
   return (
     <div className="space-y-4">
