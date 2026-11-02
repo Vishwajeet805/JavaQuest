@@ -518,10 +518,16 @@ JavaQuets uses a monorepo architecture.
       └─────────────────┘       └────────┬────────┘
                                         │
                                         ▼
-                               ┌─────────────────┐
-                               │ Isolated Java   │
-                               │ Runner          │
-                               └─────────────────┘
+                               ┌────────────────────────┐
+                               │ Language-aware Worker  │
+                               └───────────┬────────────┘
+                                           │
+                         ┌─────────────────┴─────────────────┐
+                         ▼                                   ▼
+                ┌─────────────────┐                 ┌─────────────────┐
+                │ Java 21 / JDK   │                 │ Python 3.12     │
+                │ Container       │                 │ Container       │
+                └─────────────────┘                 └─────────────────┘
 ```
 
 ---
@@ -544,7 +550,7 @@ JavaQuest/
 │
 ├── infra/
 │   ├── docker/              # Local infrastructure
-│   └── runner/              # Isolated Java runner
+│   └── runner/              # Isolated Java and Python runners
 │
 ├── docs/                    # Architecture / production documentation
 │
