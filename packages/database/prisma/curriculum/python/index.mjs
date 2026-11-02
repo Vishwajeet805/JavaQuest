@@ -33,6 +33,13 @@ import { pythonCsvModule } from "./week-5/module-28-csv.mjs";
 import { pythonIteratorsModule } from "./week-5/module-29-iterators.mjs";
 import { pythonGeneratorsModule } from "./week-5/module-30-generators.mjs";
 
+import { pythonTestingModule } from "./week-6/module-31-testing.mjs";
+import { pythonDebuggingModule } from "./week-6/module-32-debugging.mjs";
+import { pythonLoggingModule } from "./week-6/module-33-logging.mjs";
+import { pythonTypeHintsModule } from "./week-6/module-34-type-hints.mjs";
+import { pythonRegexModule } from "./week-6/module-35-regex.mjs";
+import { pythonDateTimeModule } from "./week-6/module-36-datetime.mjs";
+
 export const pythonCourseModules = [
   pythonFirstProgramModule,
   pythonVariablesModule,
@@ -64,4 +71,10 @@ export const pythonCourseModules = [
   pythonCsvModule,
   pythonIteratorsModule,
   pythonGeneratorsModule,
+  pythonTestingModule,
+  pythonDebuggingModule,
+  pythonLoggingModule,
+  pythonTypeHintsModule,
+  pythonRegexModule,
+  pythonDateTimeModule,
 ];
