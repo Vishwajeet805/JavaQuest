@@ -10,6 +10,6 @@ export async function submitCodeController(req: Request, res: Response, next: Ne
     const body = codeSubmissionSchema.safeParse(req.body);
     if (!params.success) throw new ValidationError("Invalid quest or exercise slug", params.error.flatten());
     if (!body.success) throw new ValidationError("Invalid code submission", body.error.flatten());
-    res.status(201).json(await submitCode(getLearnerId(req), params.data.questSlug, params.data.exerciseSlug, body.data.sourceCode));
+    res.status(201).json(await submitCode(getLearnerId(req), params.data.questSlug, params.data.exerciseSlug, body.data.sourceCode, body.data.files));
   } catch (error) { next(error); }
 }
