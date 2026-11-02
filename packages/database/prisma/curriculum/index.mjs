@@ -13,3 +13,7 @@ export const javaMasteryModules = [
   ...week5Modules,
   ...week6Modules,
 ];
+
+import { pythonCourseModules } from "./python/index.mjs";
+
+export { pythonCourseModules };
