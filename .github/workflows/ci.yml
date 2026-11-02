@@ -55,6 +55,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @javaquets/database db:generate
 
+      - name: Validate Java and Python curriculum sources
+        run: pnpm --filter @javaquets/database curriculum:validate
+
       - name: Apply test database schema
         run: pnpm --filter @javaquets/database db:push
 
