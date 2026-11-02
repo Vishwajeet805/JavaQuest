@@ -763,7 +763,7 @@ When working with CODE exercises:
 pnpm runner:build
 ```
 
-This builds both local images: `javaquets-java-runner:local` and `javaquets-python-runner:local`. The runner worker must have access to the Docker daemon that owns these images. Configure the API with `RUNNER_SERVICE_URL` and a strong `RUNNER_SERVICE_TOKEN` when Python course execution is enabled. Keep the worker private; access to its Docker daemon is highly privileged.
+This builds both local images: `javaquets-java-runner:local` and `javaquets-python-runner:local`. The runner worker must have access to the Docker daemon that owns these images. Configure the API with `RUNNER_SERVICE_URL` and a strong `RUNNER_SERVICE_TOKEN` when Python course execution is enabled. Keep the worker private; access to its Docker daemon is highly privileged. Run `pnpm runner:smoke` to verify Python class execution and local module imports.
 
 ---
 
@@ -834,6 +834,7 @@ pnpm build
 | `pnpm db:migrate:deploy` | Apply database migrations |
 | `pnpm db:seed` | Synchronize seeded curriculum |
 | `pnpm runner:build` | Build isolated Java and Python runner images |
+| `pnpm runner:smoke` | Smoke-test Python classes and module imports |
 
 ---
 
