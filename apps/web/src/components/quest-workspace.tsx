@@ -21,7 +21,7 @@ import {
   startQuest,
 } from "@/services/learner";
 
-import { submitJava } from "@/services/submissions";
+import { submitCode } from "@/services/submissions";
 
 export function QuestWorkspace({
   quest,
@@ -115,7 +115,7 @@ export function QuestWorkspace({
 
     try {
       if (exercise.kind === "CODE") {
-        const submission = await submitJava(quest.slug, exercise.slug, code);
+        const submission = await submitCode(quest.slug, exercise.slug, code);
 
         setResult(submission);
 
@@ -368,6 +368,7 @@ export function QuestWorkspace({
               title={current.title}
               kind={current.kind}
               content={current.content}
+              language={quest.module.language}
               currentIndex={index}
               totalItems={items.length}
               onNext={goNext}
@@ -375,6 +376,7 @@ export function QuestWorkspace({
           ) : current?.type === "exercise" ? (
             <Exercise
               exercise={current}
+              language={quest.module.language}
               code={code}
               setCode={(value) => {
                 setCode(value);
@@ -462,6 +464,7 @@ function Lesson({
 
 function Exercise({
   exercise,
+  language,
   code,
   setCode,
   answer,
@@ -475,6 +478,7 @@ function Exercise({
   onNext,
 }: {
   exercise: ExerciseDto;
+  language: QuestDetail["module"]["language"];
   code: string;
   setCode: (value: string) => void;
   answer: string;
@@ -548,18 +552,18 @@ function Exercise({
               </div>
 
               <span className="border-l border-slate-700 pl-3 text-xs font-bold text-slate-300">
-                Main.java
+                {language === "PYTHON" ? "main.py" : "Main.java"}
               </span>
             </div>
 
             <span className="rounded-md bg-slate-950 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Java 21
+              {language === "PYTHON" ? "Python 3.12" : "Java 21"}
             </span>
           </div>
 
           <textarea
             id="code-editor"
-            aria-label="Java source code"
+            aria-label={`${language === "PYTHON" ? "Python" : "Java"} source code`}
             disabled={busy}
             autoCapitalize="off"
             autoCorrect="off"
@@ -706,7 +710,7 @@ export function NonCodeAnswer({
             <p className="text-sm font-bold text-slate-200">{label}</p>
 
             <p className="mt-1 text-xs text-slate-400">
-              Enter your answer exactly as Java would produce it.
+              Enter the answer exactly as the program would produce it.
             </p>
           </div>
 
