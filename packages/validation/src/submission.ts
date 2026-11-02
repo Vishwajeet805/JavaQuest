@@ -11,14 +11,14 @@ export const codeSubmissionSchema = z.object({
 }).strict().superRefine((value, context) => {
   if (!value.files?.length) return;
   const paths = new Set(["main.py"]);
-  let totalBytes = new TextEncoder().encode(value.sourceCode).length;
+  let totalCharacters = value.sourceCode.length;
   for (const file of value.files) {
     if (file.path === "main.py" || file.path.startsWith("/") || file.path.split("/").some((part) => part === "." || part === ".." || !part)) {
       context.addIssue({ code: "custom", path: ["files"], message: "Python file paths must be unique, relative .py paths without traversal segments" });
     }
     if (paths.has(file.path)) context.addIssue({ code: "custom", path: ["files"], message: "Python file paths must be unique" });
     paths.add(file.path);
-    totalBytes += new TextEncoder().encode(file.content).length;
+    totalCharacters += file.content.length;
   }
-  if (totalBytes > 100_000) context.addIssue({ code: "custom", path: ["files"], message: "Python submission exceeds 100 KB" });
+  if (totalCharacters > 100_000) context.addIssue({ code: "custom", path: ["files"], message: "Python submission exceeds 100,000 characters" });
 });
