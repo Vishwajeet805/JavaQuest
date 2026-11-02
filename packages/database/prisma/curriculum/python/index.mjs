@@ -40,6 +40,14 @@ import { pythonTypeHintsModule } from "./week-6/module-34-type-hints.mjs";
 import { pythonRegexModule } from "./week-6/module-35-regex.mjs";
 import { pythonDateTimeModule } from "./week-6/module-36-datetime.mjs";
 
+
+import { pythonThreadingModule } from "./week-7/module-37-threading.mjs";
+import { pythonMultiprocessingModule } from "./week-7/module-38-multiprocessing.mjs";
+import { pythonAsyncioModule } from "./week-7/module-39-asyncio.mjs";
+import { pythonHttpApisModule } from "./week-7/module-40-http-apis.mjs";
+import { pythonSqliteModule } from "./week-7/module-41-sqlite.mjs";
+import { pythonCliModule } from "./week-7/module-42-cli.mjs";
+
 export const pythonCourseModules = [
   pythonFirstProgramModule,
   pythonVariablesModule,
@@ -77,4 +85,10 @@ export const pythonCourseModules = [
   pythonTypeHintsModule,
   pythonRegexModule,
   pythonDateTimeModule,
+  pythonThreadingModule,
+  pythonMultiprocessingModule,
+  pythonAsyncioModule,
+  pythonHttpApisModule,
+  pythonSqliteModule,
+  pythonCliModule,
 ];
