@@ -28,7 +28,7 @@ export const pythonDebuggingModule = buildPythonModule({
       description: "Debugging with pdb and print ke core concepts aur practical applications.",
       conceptTitle: "Debugging with pdb and print",
       concept: "`breakpoint()` interactive debugger start karta hai; `pdb` step, next, continue aur inspect commands deta hai. Temporary prints quick checks hain, lekin structured logging long-term diagnostics ke liye better hai.",
-      example: "~~~python\ndef calculate_total(prices):\n    breakpoint  # debugger entry point: call breakpoint() while debugging\n    return sum(prices)\n\nprint(calculate_total([10, 15, 5]))\n~~~\nOutput:\n30",
+      example: "~~~python\ndef calculate_total(prices):\n    print('Inspecting prices:', prices)\n    return sum(prices)\n\nprint(calculate_total([10, 15, 5]))\n~~~\nOutput:\n30",
       recap: "`breakpoint()` interactive debugger start karta hai; `pdb` step, next, continue aur inspect commands deta hai. Temporary prints quick checks hain, lekin structured logging long-term diagnostics ke liye better hai. Concepts ko revise karo aur examples khud run karke verify karo.",
       exerciseTitle: "Practice: Debugging with pdb and print",
       prompt: "Function mein list ka sum calculate karke print karo; interactive debugger call mat karo.",
