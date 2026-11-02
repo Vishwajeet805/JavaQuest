@@ -19,6 +19,13 @@ import { pythonFunctionalToolsModule } from "./week-3/module-16-functional-tools
 import { pythonModulesImportsModule } from "./week-3/module-17-modules-imports.mjs";
 import { pythonPackagesEnvironmentsModule } from "./week-3/module-18-packages-environments.mjs";
 
+import { pythonClassesObjectsModule } from "./week-4/module-19-classes-objects.mjs";
+import { pythonAttributesMethodsModule } from "./week-4/module-20-attributes-methods.mjs";
+import { pythonEncapsulationPropertiesModule } from "./week-4/module-21-encapsulation-properties.mjs";
+import { pythonInheritanceModule } from "./week-4/module-22-inheritance.mjs";
+import { pythonPolymorphismCompositionModule } from "./week-4/module-23-polymorphism-composition.mjs";
+import { pythonDunderDataclassesModule } from "./week-4/module-24-dunder-dataclasses.mjs";
+
 export const pythonCourseModules = [
   pythonFirstProgramModule,
   pythonVariablesModule,
@@ -38,4 +45,10 @@ export const pythonCourseModules = [
   pythonFunctionalToolsModule,
   pythonModulesImportsModule,
   pythonPackagesEnvironmentsModule,
+  pythonClassesObjectsModule,
+  pythonAttributesMethodsModule,
+  pythonEncapsulationPropertiesModule,
+  pythonInheritanceModule,
+  pythonPolymorphismCompositionModule,
+  pythonDunderDataclassesModule,
 ];
