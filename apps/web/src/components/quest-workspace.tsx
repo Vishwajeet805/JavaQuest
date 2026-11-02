@@ -411,6 +411,7 @@ function Lesson({
   title,
   kind,
   content,
+  language,
   currentIndex,
   totalItems,
   onNext,
@@ -418,6 +419,7 @@ function Lesson({
   title: string;
   kind: string;
   content: string;
+  language: QuestDetail["module"]["language"];
   currentIndex: number;
   totalItems: number;
   onNext: () => void;
@@ -440,7 +442,7 @@ function Lesson({
 
       <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="mx-auto max-w-4xl">
-          <LessonContent content={content} />
+          <LessonContent content={content} language={language} />
         </div>
 
         <div className="mx-auto mt-6 flex max-w-4xl justify-end border-t border-slate-800 pt-6">
