@@ -591,7 +591,26 @@ function Exercise({
             className="min-h-[320px] sm:min-h-[390px] w-full resize-y bg-transparent p-5 font-mono text-sm leading-7 text-slate-100 outline-none sm:p-6"
           />
 
-          {language === "PYTHON" && (\n            <div className="space-y-3 border-t border-slate-800 px-5 py-4">\n              <div className="flex flex-wrap items-center gap-2">\n                <span className="text-xs font-bold text-slate-300">Additional Python modules</span>\n                <input aria-label="New Python filename" value={newFileName} onChange={(event) => setNewFileName(event.target.value)} placeholder="helpers.py" disabled={busy || pythonFiles.length >= 19} className="min-h-9 w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-amber-400" />\n                <button type="button" onClick={addPythonFile} disabled={busy || !newFileName.trim() || pythonFiles.length >= 19} className="btn-secondary min-h-9">Add file</button>\n              </div>\n              {pythonFiles.map((file) => (\n                <div key={file.path} className="overflow-hidden rounded-xl border border-slate-800">\n                  <div className="flex items-center justify-between bg-slate-900 px-3 py-2">\n                    <span className="text-xs font-bold text-slate-300">{file.path}</span>\n                    <button type="button" disabled={busy} onClick={() => setPythonFiles(pythonFiles.filter((item) => item.path !== file.path))} className="text-xs font-semibold text-red-300">Remove</button>\n                  </div>\n                  <textarea aria-label={file.path} disabled={busy} spellCheck={false} value={file.content} onChange={(event) => setPythonFiles(pythonFiles.map((item) => item.path === file.path ? { ...item, content: event.target.value } : item))} className="min-h-40 w-full resize-y bg-transparent p-4 font-mono text-sm leading-6 text-slate-100 outline-none" />\n                </div>\n              ))}\n            </div>\n          )}\n\n          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-900 px-5 py-4">
+          {language === "PYTHON" && (
+            <div className="space-y-3 border-t border-slate-800 px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-300">Additional Python modules</span>
+                <input aria-label="New Python filename" value={newFileName} onChange={(event) => setNewFileName(event.target.value)} placeholder="helpers.py" disabled={busy || pythonFiles.length >= 19} className="min-h-9 w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-amber-400" />
+                <button type="button" onClick={addPythonFile} disabled={busy || !newFileName.trim() || pythonFiles.length >= 19} className="btn-secondary min-h-9">Add file</button>
+              </div>
+              {pythonFiles.map((file) => (
+                <div key={file.path} className="overflow-hidden rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between bg-slate-900 px-3 py-2">
+                    <span className="text-xs font-bold text-slate-300">{file.path}</span>
+                    <button type="button" disabled={busy} onClick={() => setPythonFiles(pythonFiles.filter((item) => item.path !== file.path))} className="text-xs font-semibold text-red-300">Remove</button>
+                  </div>
+                  <textarea aria-label={file.path} disabled={busy} spellCheck={false} value={file.content} onChange={(event) => setPythonFiles(pythonFiles.map((item) => item.path === file.path ? { ...item, content: event.target.value } : item))} className="min-h-40 w-full resize-y bg-transparent p-4 font-mono text-sm leading-6 text-slate-100 outline-none" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-900 px-5 py-4">
             <p className="text-xs text-slate-400">
               Run your solution against the challenge tests.
             </p>
