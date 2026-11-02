@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export function LessonContent({ content }: { content: string }) {
+export function LessonContent({ content, language = "JAVA" }: { content: string; language?: "JAVA" | "PYTHON" }) {
   return (
     <div className="lesson-content min-w-0 max-w-3xl text-slate-300">
       <ReactMarkdown
@@ -98,7 +98,7 @@ export function LessonContent({ content }: { content: string }) {
           pre: ({ children }) => (
             <div className="my-7 overflow-hidden rounded-2xl border border-slate-700 bg-[#050914]">
               <div className="border-b border-slate-800 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Java
+                {language === "PYTHON" ? "Python" : "Java"}
               </div>
 
               <pre
