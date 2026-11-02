@@ -1,3 +1,4 @@
+export type ProgrammingLanguage = "JAVA" | "PYTHON";
 export type Difficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 export type CourseStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type QuestStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -27,6 +28,7 @@ export type CourseSummary = {
   title: string;
   description: string;
   difficulty: Difficulty;
+  language: ProgrammingLanguage;
   moduleCount: number;
   questCount: number;
 };
@@ -36,6 +38,7 @@ export type CourseDetail = {
   title: string;
   description: string;
   difficulty: Difficulty;
+  language: ProgrammingLanguage;
   modules: CourseModuleSummary[];
 };
 
@@ -62,6 +65,7 @@ export type QuestDetail = QuestSummary & {
     slug: string;
     title: string;
     courseSlug: string;
+    language: ProgrammingLanguage;
   };
   lessons: LessonDto[];
   exercises: ExerciseDto[];
