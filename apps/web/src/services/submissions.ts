@@ -1,6 +1,6 @@
 import type { SubmissionResultDto } from "@javaquets/shared";
 import { apiFetch } from "@/lib/api";
-export const submitJava = (
+export const submitCode = (
   quest: string,
   exercise: string,
   sourceCode: string,
