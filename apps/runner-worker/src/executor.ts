@@ -50,7 +50,7 @@ export function checkDocker() {
 }
 
 function validatePythonFiles(files: SourceFile[]) {
-  if (!files.length || files.length > 20) throw new Error("Python submission must contain between 1 and 20 files");
+  if (!files.length || files.length > 20) throw Object.assign(new Error("Python submission must contain between 1 and 20 files"), { statusCode: 400 });
   let totalBytes = 0;
   const seen = new Set<string>();
   for (const file of files) {
@@ -58,12 +58,12 @@ function validatePythonFiles(files: SourceFile[]) {
     if (normalized !== file.path || normalized.startsWith("../") || normalized.startsWith("/") ||
         !/^[a-zA-Z0-9_./-]+\.py$/.test(normalized) || normalized.split("/").some((part) => !part || part === "." || part === "..") ||
         typeof file.content !== "string" || !file.content.length || seen.has(normalized)) {
-      throw new Error("Invalid Python source file");
+      throw Object.assign(new Error("Invalid Python source file"), { statusCode: 400 });
     }
     seen.add(normalized);
     totalBytes += Buffer.byteLength(file.content);
   }
-  if (totalBytes > 100_000 || !seen.has("main.py")) throw new Error("Python source files exceed limits or main.py is missing");
+  if (totalBytes > 100_000 || !seen.has("main.py")) throw Object.assign(new Error("Python source files exceed limits or main.py is missing"), { statusCode: 400 });
 }
 
 export async function execute(
