@@ -58,8 +58,11 @@ jobs:
       - name: Apply test database schema
         run: pnpm --filter @javaquets/database db:push
 
-      - name: Build isolated Java runner
+      - name: Build isolated Java and Python runners
         run: pnpm runner:build
+
+      - name: Smoke-test Python classes and local modules
+        run: pnpm runner:smoke
 
       - name: Lint
         run: pnpm lint
