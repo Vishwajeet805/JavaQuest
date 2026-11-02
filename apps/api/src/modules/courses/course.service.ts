@@ -20,6 +20,7 @@ export async function listPublishedCourses(): Promise<CourseSummary[]> {
     title: course.title,
     description: course.description,
     difficulty: course.difficulty,
+    language: course.language,
     moduleCount: course.modules.length,
     questCount: course.modules.reduce((sum, module) => sum + module._count.quests, 0),
   }));
@@ -50,6 +51,7 @@ export async function getPublishedCourse(slug: string): Promise<CourseDetail> {
     title: course.title,
     description: course.description,
     difficulty: course.difficulty,
+    language: course.language,
     modules: course.modules.map((module) => ({
       slug: module.slug,
       title: module.title,
