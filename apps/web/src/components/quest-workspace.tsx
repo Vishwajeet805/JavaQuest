@@ -55,6 +55,7 @@ export function QuestWorkspace({
   const [progress, setProgress] = useState<QuestProgressDto | null>(null);
 
   const [code, setCode] = useState(quest.exercises[0]?.starterCode ?? "");
+  const [pythonFiles, setPythonFiles] = useState<{ path: string; content: string }[]>([]);
 
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<SubmissionResultDto | null>(null);
@@ -95,6 +96,7 @@ export function QuestWorkspace({
   useEffect(() => {
     if (current?.type === "exercise") {
       setCode(drafts.current[current.slug] ?? current.starterCode ?? "");
+      setPythonFiles([]);
     }
 
     setAnswer("");
@@ -115,7 +117,7 @@ export function QuestWorkspace({
 
     try {
       if (exercise.kind === "CODE") {
-        const submission = await submitCode(quest.slug, exercise.slug, code);
+        const submission = await submitCode(quest.slug, exercise.slug, code, quest.module.language === "PYTHON" ? pythonFiles : undefined);
 
         setResult(submission);
 
@@ -496,7 +498,7 @@ function Exercise({
   const passed = result?.status === "PASSED";
   const isCode = exercise.kind === "CODE";
   const isPrediction = exercise.kind === "OUTPUT_PREDICTION";
-  const isMultipleChoice = exercise.kind === "MULTIPLE_CHOICE";
+  const isMultipleChoice = exercise.kind === "MULTIPLE_CHOICE";\n  const [newFileName, setNewFileName] = useState("");\n  const addPythonFile = () => {\n    const name = newFileName.trim();\n    if (!/^[a-zA-Z0-9_][a-zA-Z0-9_-]*\\.py$/.test(name) || name === "main.py" || pythonFiles.some((file) => file.path === name) || pythonFiles.length >= 19) return;\n    setPythonFiles([...pythonFiles, { path: name, content: "# Add your Python code here\\n" }]);\n    setNewFileName("");\n  };
 
   return (
     <div className="space-y-4">
@@ -576,7 +578,7 @@ function Exercise({
             className="min-h-[320px] sm:min-h-[390px] w-full resize-y bg-transparent p-5 font-mono text-sm leading-7 text-slate-100 outline-none sm:p-6"
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-900 px-5 py-4">
+          {language === "PYTHON" && (\n            <div className="space-y-3 border-t border-slate-800 px-5 py-4">\n              <div className="flex flex-wrap items-center gap-2">\n                <span className="text-xs font-bold text-slate-300">Additional Python modules</span>\n                <input aria-label="New Python filename" value={newFileName} onChange={(event) => setNewFileName(event.target.value)} placeholder="helpers.py" disabled={busy || pythonFiles.length >= 19} className="min-h-9 w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-amber-400" />\n                <button type="button" onClick={addPythonFile} disabled={busy || !newFileName.trim() || pythonFiles.length >= 19} className="btn-secondary min-h-9">Add file</button>\n              </div>\n              {pythonFiles.map((file) => (\n                <div key={file.path} className="overflow-hidden rounded-xl border border-slate-800">\n                  <div className="flex items-center justify-between bg-slate-900 px-3 py-2">\n                    <span className="text-xs font-bold text-slate-300">{file.path}</span>\n                    <button type="button" disabled={busy} onClick={() => setPythonFiles(pythonFiles.filter((item) => item.path !== file.path))} className="text-xs font-semibold text-red-300">Remove</button>\n                  </div>\n                  <textarea aria-label={file.path} disabled={busy} spellCheck={false} value={file.content} onChange={(event) => setPythonFiles(pythonFiles.map((item) => item.path === file.path ? { ...item, content: event.target.value } : item))} className="min-h-40 w-full resize-y bg-transparent p-4 font-mono text-sm leading-6 text-slate-100 outline-none" />\n                </div>\n              ))}\n            </div>\n          )}\n\n          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-900 px-5 py-4">
             <p className="text-xs text-slate-400">
               Run your solution against the challenge tests.
             </p>
