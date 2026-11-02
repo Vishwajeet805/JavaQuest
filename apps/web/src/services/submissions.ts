@@ -7,5 +7,5 @@ export const submitCode = (
 ) =>
   apiFetch<SubmissionResultDto>(
     `/quests/${encodeURIComponent(quest)}/exercises/${encodeURIComponent(exercise)}/submissions`,
-    { method: "POST", body: JSON.stringify({ sourceCode }) },
+    { method: "POST", body: JSON.stringify({ sourceCode, files }) },
   );
