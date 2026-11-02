@@ -12,7 +12,7 @@ export async function runPythonSource(
   if (
     !sourceCode.length ||
     Buffer.byteLength(sourceCode) > env.RUNNER_MAX_SOURCE_BYTES ||
-    Buffer.byteLength(stdin) > env.RUNNER_MAX_STDIN_BYTES
+    Buffer.byteLength(stdin) > env.RUNNER_MAX_STDIN_BYTES ||\n    (files?.length ?? 0) > 19 ||\n    (files ?? []).some((file) => !/^[a-zA-Z0-9_./-]+\\.py$/.test(file.path) || file.path.startsWith("/") || file.path.split("/").some((part) => !part || part === "." || part === "..")) ||\n    Buffer.byteLength(JSON.stringify(files ?? [])) + Buffer.byteLength(sourceCode) > 100_000
   ) {
     throw new AppError(
       "RUNNER_INPUT_TOO_LARGE",
@@ -46,7 +46,7 @@ export async function runPythonSource(
           "content-type": "application/json",
           "x-request-id": randomUUID(),
         },
-        body: JSON.stringify({ language: "PYTHON", sourceCode, stdin, timeoutMs }),
+        body: JSON.stringify({ language: "PYTHON", sourceCode, files: files?.length ? [{ path: "main.py", content: sourceCode }, ...files] : undefined, stdin, timeoutMs }),
         signal: controller.signal,
       },
     );
